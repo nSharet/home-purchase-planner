@@ -1,1 +1,338 @@
-<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>מתכנן רכישת בית</title><meta name="description" content="מחשבון אינטראקטיבי לתכנון עלויות רכישת בית ומשכנתא"><link rel="stylesheet" href="src/styles.css"></head><body><header><h1>🏠 מתכנן רכישת בית</h1><p>מחיר, מסים, שיפוץ, הון עצמי ומשכנתא — בתרחיש אחד.</p></header><main><section class="panel controls"><h2>פרטי העסקה</h2><div id="inputs"></div><h3>הוצאות שיפוץ ועיצוב</h3><div id="renovations"></div><button id="addRenovation">＋ הוסף הוצאה</button><h3>מדרגות החזר חודשי</h3><div id="repaymentTiers"></div><button id="addTier">＋ הוסף מדרגה</button></section><section class="panel summary"><h2>סיכום</h2><div id="cards"></div><div id="warning"></div><h3>פירוט עלויות</h3><table><tbody id="breakdown"></tbody></table><div class="actions"><button id="save">שמור בדפדפן</button><button id="exportJson">ייצוא JSON</button><button id="exportCsv">ייצוא CSV</button><label class="import">ייבוא JSON<input id="importJson" type="file" accept="application/json"></label><button id="reset">איפוס</button></div></section></main><footer>החישוב הוא כלי תכנון בלבד. יש לאמת מס, מימון ועלויות מול אנשי המקצוע הרלוונטיים.</footer><script type="module" src="src/app.js"></script></body></html>
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>מחשבון עלות רכישת בית ומשכנתא</title>
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero-row">
+        <div>
+          <h1>מחשבון עלות רכישת בית ומשכנתא</h1>
+          <p>בונים כמה תרחישים, מחשבים את העלות הכוללת של העסקה, מקזזים הון ונכסים זמינים ומקבלים פער מימון והחזר חודשי לפי מדרגות שאתם מגדירים.</p>
+        </div>
+        <div class="hero-actions no-print">
+          <button class="btn ghost" id="printBtn">הדפסה / שמירה כ־PDF</button>
+          <button class="btn ghost" id="exportBtn">ייצוא נתונים</button>
+          <button class="btn ghost" id="importBtn">ייבוא נתונים</button>
+          <button class="btn ghost" id="csvBtn">CSV להשוואה</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="scenario-bar">
+      <div class="scenario-tabs" id="scenarioTabs"></div>
+      <button class="btn secondary small" id="addScenarioBtn">+ תרחיש חדש</button>
+      <button class="btn secondary small" id="duplicateScenarioBtn">שכפול</button>
+      <button class="btn danger small" id="deleteScenarioBtn">מחיקה</button>
+    </section>
+
+    <nav class="quick-nav no-print" aria-label="ניווט מהיר בין חלקי המחשבון">
+      <a href="#sectionProperty">הנכס</a>
+      <a href="#sectionTransaction">מס ועלויות</a>
+      <a href="#sectionRenovation">שיפוץ</a>
+      <a href="#sectionEquity">הון עצמי</a>
+      <a href="#sectionRepayment">החזר חודשי</a>
+      <a href="#decisionLab">מעבדת החלטה</a>
+      <a href="#sectionComparison">השוואת תרחישים</a>
+    </nav>
+
+    <section class="kpis">
+      <div class="kpi"><div class="kpi-label">מחיר הבית</div><div class="kpi-value" id="kpiPrice">—</div><div class="kpi-sub">מחיר העסקה שהוזן</div></div>
+      <div class="kpi"><div class="kpi-label">עלויות נוספות</div><div class="kpi-value" id="kpiExtras">—</div><div class="kpi-sub">מס, עמלות, שיפוץ והוצאות</div></div>
+      <div class="kpi"><div class="kpi-label">עלות פרויקט כוללת</div><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-sub">בית + כל העלויות הנלוות</div></div>
+      <div class="kpi good" id="mortgageKpi"><div class="kpi-label">משכנתא נדרשת</div><div class="kpi-value" id="kpiMortgage">—</div><div class="kpi-sub" id="kpiMortgageSub">לאחר קיזוז ההון הזמין</div></div>
+      <div class="kpi"><div class="kpi-label">החזר חודשי משוער</div><div class="kpi-value" id="kpiPayment">—</div><div class="kpi-sub">לפי טבלת המדרגות שהוגדרה</div></div>
+    </section>
+
+    <div class="layout">
+      <main class="main-column">
+        <section class="card" id="sectionProperty">
+          <div class="card-head">
+            <div><h2>1. הנכס והעסקה</h2><div class="section-note">הנתונים שמשפיעים על מס הרכישה, תיווך ועל שיעור המימון.</div></div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="scenarioName">שם התרחיש</label>
+              <input id="scenarioName" type="text" placeholder="למשל: בית ברחוב הדקל" />
+            </div>
+            <div class="field">
+              <label for="propertyPrice">מחיר הבית</label>
+              <div class="input-suffix"><input id="propertyPrice" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="purchaseType">סוג רכישה</label>
+              <select id="purchaseType">
+                <option value="single">דירה יחידה</option>
+                <option value="replacement">דירה חליפית / משפרי דיור</option>
+                <option value="investment">דירה נוספת / השקעה</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="appraisalValue">שווי שמאי לבדיקת LTV</label>
+              <div class="input-suffix"><input id="appraisalValue" type="number" min="0" step="10000" placeholder="ריק = מחיר הבית" /><span>₪</span></div>
+              <div class="help">הבדיקה משתמשת בנמוך מבין מחיר העסקה ושווי השמאי.</div>
+            </div>
+            <div class="field">
+              <label for="maxLtvOverride">מגבלת מימון</label>
+              <div class="input-suffix"><input id="maxLtvOverride" type="number" min="0" max="100" step="1" /><span>%</span></div>
+              <div class="help">ברירת מחדל לפי סוג הרכישה; אפשר לשנות.</div>
+            </div>
+            <div class="field">
+              <label for="transactionDate">תאריך עסקה משוער</label>
+              <input id="transactionDate" type="date" />
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="sectionTransaction">
+          <div class="card-head">
+            <div><h2>2. מס רכישה ועלויות עסקה</h2><div class="section-note">כל אחוז מחושב מתוך מחיר הבית. מע״מ מתווסף רק כאשר מסומן.</div></div>
+            <a href="https://www.gov.il/he/service/real_eatate_taxsimulator" target="_blank" rel="noopener">בדיקה בסימולטור רשות המסים</a>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="taxMode">מס רכישה</label>
+              <select id="taxMode">
+                <option value="auto">חישוב אוטומטי לפי מדרגות 2026</option>
+                <option value="manual">סכום ידני</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="manualTax">מס רכישה ידני</label>
+              <div class="input-suffix"><input id="manualTax" type="number" min="0" step="1000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label>מס רכישה מחושב</label>
+              <div class="status-box" id="taxResultBox"><strong id="taxResult">—</strong><div class="help" id="taxBasis">—</div></div>
+            </div>
+            <div class="field">
+              <label for="brokerPct">תיווך</label>
+              <div class="input-suffix"><input id="brokerPct" type="number" min="0" step="0.1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label for="lawyerPct">עורך דין</label>
+              <div class="input-suffix"><input id="lawyerPct" type="number" min="0" step="0.1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label for="vatRate">שיעור מע״מ</label>
+              <div class="input-suffix"><input id="vatRate" type="number" min="0" step="0.1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label class="checkbox-line"><input id="brokerVat" type="checkbox" /> להוסיף מע״מ לתיווך</label>
+            </div>
+            <div class="field">
+              <label class="checkbox-line"><input id="lawyerVat" type="checkbox" /> להוסיף מע״מ לעורך דין</label>
+            </div>
+            <div class="field">
+              <label for="appraisalCost">שמאות</label>
+              <div class="input-suffix"><input id="appraisalCost" type="number" min="0" step="100" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="mortgageFees">פתיחת תיק / ייעוץ משכנתא</label>
+              <div class="input-suffix"><input id="mortgageFees" type="number" min="0" step="100" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="registrationCosts">רישום, בדיקות ואגרות</label>
+              <div class="input-suffix"><input id="registrationCosts" type="number" min="0" step="100" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="movingCosts">הובלה ומעבר</label>
+              <div class="input-suffix"><input id="movingCosts" type="number" min="0" step="100" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="otherTransactionCosts">הוצאות עסקה נוספות</label>
+              <div class="input-suffix"><input id="otherTransactionCosts" type="number" min="0" step="100" /><span>₪</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="sectionRenovation">
+          <div class="card-head">
+            <div><h2>3. תיקונים, שיפוץ ועיצוב</h2><div class="section-note">הסכומים קבועים ואינם נגזרים ממחיר הבית. אפשר להוסיף, למחוק או לבטל שורה.</div></div>
+            <button class="btn secondary small no-print" id="addRenovationBtn">+ הוספת סעיף</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>כלול</th><th>קבוצה</th><th>סעיף</th><th>עלות</th><th class="no-print">פעולות</th></tr></thead>
+              <tbody id="renovationRows"></tbody>
+            </table>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field">
+              <label for="contingencyPct">רזרבה לחריגות שיפוץ</label>
+              <div class="input-suffix"><input id="contingencyPct" type="number" min="0" step="1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label>סך סעיפי שיפוץ</label>
+              <div class="status-box"><strong id="renovationSubtotal">—</strong></div>
+            </div>
+            <div class="field">
+              <label>רזרבה מחושבת</label>
+              <div class="status-box"><strong id="contingencyAmount">—</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="sectionEquity">
+          <div class="card-head">
+            <div><h2>4. הון עצמי ונכסים זמינים</h2><div class="section-note">אפשר להפריד בין כסף נזיל לבין הון נטו בנכס קיים.</div></div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="liquidEquity">הון עצמי נזיל</label>
+              <div class="input-suffix"><input id="liquidEquity" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="otherEquity">מקורות נוספים</label>
+              <div class="input-suffix"><input id="otherEquity" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="reserveCash">מזומן שרוצים להשאיר בצד</label>
+              <div class="input-suffix"><input id="reserveCash" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="existingPropertyValue">שווי נכס קיים</label>
+              <div class="input-suffix"><input id="existingPropertyValue" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="existingPropertyDebt">יתרת חוב על הנכס</label>
+              <div class="input-suffix"><input id="existingPropertyDebt" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="field">
+              <label for="saleCostPct">עלות מימוש/מכירה משוערת</label>
+              <div class="input-suffix"><input id="saleCostPct" type="number" min="0" step="0.1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label for="propertyEquityUsePct">אחוז מההון בנכס שיופנה לעסקה</label>
+              <div class="input-suffix"><input id="propertyEquityUsePct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+            <div class="field">
+              <label>הון נטו זמין מהנכס</label>
+              <div class="status-box"><strong id="propertyEquityResult">—</strong></div>
+            </div>
+            <div class="field">
+              <label>סה״כ הון זמין לעסקה</label>
+              <div class="status-box good"><strong id="totalEquityResult">—</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="sectionRepayment">
+          <div class="card-head">
+            <div><h2>5. טבלת משכנתא והחזר חודשי</h2><div class="section-note">הגדירו נקודות של סכום משכנתא והחזר. בין הנקודות אפשר לבצע אינטרפולציה או לעגל למדרגה הבאה.</div></div>
+            <button class="btn secondary small no-print" id="addRepaymentBtn">+ הוספת מדרגה</button>
+          </div>
+          <div class="form-grid" style="margin-bottom:14px">
+            <div class="field">
+              <label for="repaymentMode">שיטת חישוב</label>
+              <select id="repaymentMode">
+                <option value="interpolate">אינטרפולציה בין נקודות</option>
+                <option value="nextStep">עיגול למדרגה הבאה</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="manualMortgageAdjustment">תוספת/הפחתה למשכנתא</label>
+              <div class="input-suffix"><input id="manualMortgageAdjustment" type="number" step="10000" /><span>₪</span></div>
+              <div class="help">למשל הלוואת גישור או מימון שאינו חלק מהחישוב.</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>סכום משכנתא</th><th>החזר חודשי</th><th class="no-print">פעולות</th></tr></thead>
+              <tbody id="repaymentRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card comparison" id="sectionComparison">
+          <div class="card-head">
+            <div><h2>השוואת תרחישים</h2><div class="section-note">כל התרחישים נשמרים בדפדפן ומתעדכנים מיד.</div></div>
+          </div>
+          <div class="table-wrap"><table id="comparisonTable"></table></div>
+        </section>
+      </main>
+
+      <aside class="side-column">
+        <section class="card">
+          <div class="card-head"><h2>פירוט עלות העסקה</h2></div>
+          <div class="summary-list" id="costBreakdown"></div>
+          <div class="bar-stack" id="costBars"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>פער מימון ובדיקת LTV</h2></div>
+          <div class="summary-list">
+            <div class="summary-row"><span>עלות כוללת</span><strong id="sideTotalCost">—</strong></div>
+            <div class="summary-row"><span>הון זמין</span><strong id="sideEquity">—</strong></div>
+            <div class="summary-row emphasis"><span>משכנתא נדרשת</span><strong id="sideMortgage">—</strong></div>
+            <div class="summary-row"><span>החזר חודשי</span><strong id="sidePayment">—</strong></div>
+            <div class="summary-row"><span>שיעור מימון מחושב</span><strong id="sideLtv">—</strong></div>
+            <div class="summary-row"><span>משכנתא מרבית לפי המגבלה</span><strong id="sideMaxMortgage">—</strong></div>
+          </div>
+          <div class="progress"><span id="ltvProgress"></span></div>
+          <div class="status-box" id="ltvStatus">—</div>
+          <div class="footnote">בדיקת שיעור המימון היא אומדן בלבד. הבנק עשוי לחשב שווי בטוחה, הון עצמי מוכר ועלויות מימון באופן שונה.</div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>רגישות למחיר הבית</h2></div>
+          <div class="section-note">שינוי מהיר של מחיר הבית בלבד; כל שאר ההנחות נשארות זהות.</div>
+          <div class="table-wrap" style="margin-top:10px"><table id="sensitivityTable" style="min-width:0"></table></div>
+        </section>
+
+        <section class="card" id="decisionLab">
+          <div class="card-head">
+            <div><h2>מעבדת החלטה: מחיר ↔ משכנתא ↔ החזר</h2><div class="section-note">בודקים מחיר חלופי בלי לשנות את התרחיש, או מחשבים מחיר בית מרבי לפי החזר חודשי יעד.</div></div>
+          </div>
+          <div class="decision-grid">
+            <div class="field">
+              <label for="previewPropertyPrice">מחיר בית לבדיקה</label>
+              <div class="input-suffix"><input id="previewPropertyPrice" type="number" min="0" step="10000" /><span>₪</span></div>
+            </div>
+            <div class="decision-result"><span>עלות כוללת</span><strong id="previewTotalCost">—</strong></div>
+            <div class="decision-result"><span>משכנתא נדרשת</span><strong id="previewMortgage">—</strong></div>
+            <div class="decision-result primary"><span>החזר חודשי</span><strong id="previewPayment">—</strong></div>
+            <div class="decision-result"><span>שיעור מימון</span><strong id="previewLtv">—</strong></div>
+          </div>
+          <button class="btn secondary small" id="applyPreviewPriceBtn">החלת המחיר על התרחיש</button>
+          <div class="divider"></div>
+          <div class="field">
+            <label for="targetMonthlyPayment">החזר חודשי מרבי רצוי</label>
+            <div class="input-suffix"><input id="targetMonthlyPayment" type="number" min="0" step="100" value="8000" /><span>₪</span></div>
+          </div>
+          <div class="target-result" id="targetPriceResult">הזינו החזר יעד כדי לקבל אומדן למחיר הבית המרבי.</div>
+          <button class="btn secondary small" id="applyTargetPriceBtn" disabled>החלת מחיר הבית המרבי</button>
+          <div class="footnote">החישוב שומר את כל עלויות העסקה, השיפוץ וההון של התרחיש הקיים, ומשנה רק את מחיר הבית. זהו אומדן מתמטי לפי טבלת ההחזרים שהוגדרה.</div>
+        </section>
+
+        <section class="card no-print">
+          <div class="card-head"><h2>ניהול נתונים</h2></div>
+          <div style="display:grid;gap:8px">
+            <button class="btn secondary" id="copySummaryBtn">העתקת סיכום</button>
+            <button class="btn danger" id="resetBtn">איפוס כל הנתונים</button>
+          </div>
+          <div class="footnote">הנתונים נשמרים אוטומטית רק בדפדפן ובמכשיר הנוכחי.</div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="card-head"><h2 id="modalTitle">נתונים</h2><button class="icon-btn" id="closeModalBtn">✕</button></div>
+      <textarea id="dataTextarea"></textarea>
+      <div class="modal-actions">
+        <button class="btn secondary" id="modalCopyBtn">העתקה</button>
+        <button class="btn secondary" id="downloadJsonBtn">הורדת JSON</button>
+        <button class="btn" id="modalApplyBtn">החלת ייבוא</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
