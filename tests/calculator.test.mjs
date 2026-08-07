@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calculatePurchaseTax,
+  calculatePriceSensitivity,
   calculateRepayment,
   calculateScenario,
   findMaxPropertyPriceForPayment,
@@ -87,6 +88,19 @@ test('scenario calculation includes transaction, renovation, equity and LTV comp
   assert.ok(result.totalCost > result.price);
   assert.ok(result.mortgageGap > 0);
   assert.ok(result.payment > 0);
+  assert.equal(result.financingMargin, result.maxMortgage - result.mortgageGap);
+});
+
+test('price sensitivity includes all required deltas and preserves the source scenario', () => {
+  const scenario = baseScenario();
+  const original = structuredClone(scenario);
+  const results = calculatePriceSensitivity(scenario);
+
+  assert.deepEqual(results.map(({ delta }) => delta), [-10, -5, 0, 5, 10]);
+  assert.equal(results[0].price, 3_150_000);
+  assert.equal(results[2].price, scenario.propertyPrice);
+  assert.equal(results[4].price, 3_850_000);
+  assert.deepEqual(scenario, original);
 });
 
 test('manual purchase tax overrides automatic tax', () => {

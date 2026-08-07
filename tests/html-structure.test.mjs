@@ -32,13 +32,20 @@ const requiredControls = [
   'csvBtn',
   'downloadJsonBtn',
   'previewPropertyPrice',
-  'targetMonthlyPayment'
+  'targetMonthlyPayment',
+  'copySummaryBtn',
+  'resetBtn'
 ];
 
 test('all detailed source rubrics remain in the page', () => {
   for (const rubric of requiredRubrics) {
     assert.ok(html.includes(rubric), `Missing rubric: ${rubric}`);
   }
+});
+
+test('sensitivity output and notifications expose accessible labels', () => {
+  assert.match(html, /id="sensitivityTable"[^>]+aria-label=/);
+  assert.match(html, /id="toast"[^>]+role="status"[^>]+aria-live="polite"/);
 });
 
 test('all scenario, editing and export controls remain available', () => {

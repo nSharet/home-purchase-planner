@@ -127,6 +127,7 @@ export function calculateScenario(scenario, overridePrice = null) {
   const maxMortgage = ltvBase * ltvLimit / 100;
   const ltv = ltvBase > 0 ? mortgageGap / ltvBase * 100 : 0;
   const financingShortfall = Math.max(0, mortgageGap - maxMortgage);
+  const financingMargin = maxMortgage - mortgageGap;
   const payment = calculateRepayment(mortgageGap, s.repayments, s.repaymentMode);
 
   return {
@@ -151,8 +152,20 @@ export function calculateScenario(scenario, overridePrice = null) {
     maxMortgage,
     ltv,
     financingShortfall,
+    financingMargin,
     payment
   };
+}
+
+/** Builds price-only sensitivity scenarios without mutating the active scenario. */
+export function calculatePriceSensitivity(scenario, deltas = [-10, -5, 0, 5, 10]) {
+  const basePrice = Math.max(0, n(scenario?.propertyPrice));
+
+  return deltas.map((delta) => {
+    const normalizedDelta = n(delta);
+    const price = Math.max(0, basePrice * (100 + normalizedDelta) / 100);
+    return { delta: normalizedDelta, ...calculateScenario(scenario, price) };
+  });
 }
 
 export function findMaxPropertyPriceForPayment(
