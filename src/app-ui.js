@@ -54,9 +54,8 @@ function renderComputedOnly() {
         status.className = 'status-box bad';
         status.innerHTML = `<strong>נדרש להשלים עוד ${money(c.financingShortfall)}</strong><br><span>המשכנתא המחושבת גבוהה ממגבלת ${percent(c.ltvLimit,0)} לפי בסיס שווי של ${money(c.ltvBase)}.</span>`;
       } else {
-        const room = Math.max(0, c.maxMortgage - c.mortgageGap);
         status.className = progressPct > 90 ? 'status-box warn' : 'status-box good';
-        status.innerHTML = `<strong>בתוך מגבלת המימון שהוגדרה</strong><br><span>מרווח משוער: ${money(room)}.</span>`;
+        status.innerHTML = `<strong>בתוך מגבלת המימון שהוגדרה</strong><br><span>מרווח משוער: ${money(c.financingMargin)}.</span>`;
       }
     }
 
@@ -69,12 +68,8 @@ function renderComputedOnly() {
     }
 
     function renderSensitivity() {
-      const s = active(), p = n(s.propertyPrice);
-      const deltas = [-10,-5,0,5,10];
-      const rows = deltas.map(d => {
-        const price = Math.max(0, p * (1+d/100));
-        const c = calculateScenario(s, price);
-        return `<tr><td>${d>0?'+':''}${d}%</td><td>${money(price)}</td><td>${money(c.mortgageGap)}</td><td>${money(c.payment)}</td></tr>`;
+      const rows = calculator.calculatePriceSensitivity(active()).map(c => {
+        return `<tr><td>${c.delta>0?'+':''}${c.delta}%</td><td>${money(c.price)}</td><td>${money(c.mortgageGap)}</td><td>${money(c.payment)}</td></tr>`;
       }).join('');
       document.getElementById('sensitivityTable').innerHTML = `<thead><tr><th>שינוי</th><th>מחיר</th><th>משכנתא</th><th>החזר</th></tr></thead><tbody>${rows}</tbody>`;
     }
@@ -122,6 +117,20 @@ function renderComputedOnly() {
     function toast(message) {
       const t = document.getElementById('toast'); t.textContent = message; t.classList.add('show');
       clearTimeout(toast.timer); toast.timer = setTimeout(()=>t.classList.remove('show'), 2200);
+    }
+
+    async function copyText(value) {
+      if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) throw new Error('Copy command failed');
     }
 
     function summaryText(s = active()) {
@@ -204,7 +213,7 @@ function renderComputedOnly() {
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
     document.getElementById('modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
     document.getElementById('modalCopyBtn').addEventListener('click', async () => {
-      await navigator.clipboard.writeText(document.getElementById('dataTextarea').value); toast('הנתונים הועתקו');
+      await copyText(document.getElementById('dataTextarea').value); toast('הנתונים הועתקו');
     });
     document.getElementById('downloadJsonBtn').addEventListener('click', () => {
       downloadFile('תרחישי-רכישת-בית.json', JSON.stringify(state, null, 2), 'application/json;charset=utf-8');
@@ -219,7 +228,7 @@ function renderComputedOnly() {
         saveState(); closeModal(); render(); toast('הנתונים יובאו בהצלחה');
       } catch (e) { alert('לא ניתן לייבא את הנתונים. ודאו שזהו קובץ JSON תקין של המחשבון.'); }
     });
-    document.getElementById('copySummaryBtn').addEventListener('click', async () => { await navigator.clipboard.writeText(summaryText()); toast('הסיכום הועתק'); });
+    document.getElementById('copySummaryBtn').addEventListener('click', async () => { await copyText(summaryText()); toast('הסיכום הועתק'); });
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (!confirm('לאפס את כל התרחישים והנתונים?')) return;
       state = { activeId: null, scenarios: [makeScenario()] }; state.activeId = state.scenarios[0].id; saveState(); render();
