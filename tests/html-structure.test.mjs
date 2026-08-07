@@ -60,3 +60,32 @@ test('page remains Hebrew RTL and loads the shared calculation engine', async ()
   const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
   assert.ok(app.includes("import * as calculator from './calculator.js'"));
 });
+
+test('application initializes synchronously with the requested planning defaults', async () => {
+  const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
+
+  assert.ok(!app.includes('document.createElement(\'script\')'), 'App must not depend on dynamically injected scripts');
+  assert.match(app, /function makeScenario\(name = 'בית 1'\)/);
+  assert.match(app, /propertyPrice: 3000000, purchaseType: 'single', appraisalValue: 0/);
+  assert.match(app, /maxLtvOverride: 70/);
+  assert.match(app, /appraisalCost: 2500, mortgageFees: 3000, registrationCosts: 2500, movingCosts: null/);
+  assert.match(app, /liquidEquity: null, otherEquity: null, reserveCash: null/);
+  assert.match(app, /existingPropertyValue: null, existingPropertyDebt: null/);
+});
+
+test('application includes detailed renovation and mortgage defaults', async () => {
+  const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
+  const renovationDefaults = [
+    'החלפת מטבח',
+    'שיפוץ חדרי רחצה',
+    'חשמל, לוח ושקעים',
+    'ארונות ונגרות מותאמת',
+    'תאורה, וילונות ועיצוב',
+    'ריהוט ומוצרי חשמל'
+  ];
+
+  for (const item of renovationDefaults) assert.ok(app.includes(item), `Missing renovation default: ${item}`);
+  for (const loan of [1000000, 1200000, 1400000, 1600000, 1700000, 1800000, 2000000]) {
+    assert.ok(app.includes(`loan: ${loan}`), `Missing mortgage default: ${loan}`);
+  }
+});
