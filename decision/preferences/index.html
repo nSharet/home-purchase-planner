@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>מפת העדפות – לוח החלטה לדירה</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --card:#fff; --ink:#1f2937; --muted:#667085;
+      --brand:#1f4e78; --brand2:#4472c4; --line:#e6e9ef; --good:#177245;
+      --soft:#eef4fb; --warn:#fff6db;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial, Helvetica, sans-serif; background:var(--bg); color:var(--ink); }
+    .wrap { max-width:1050px; margin:0 auto; padding:24px 16px 80px; }
+    .hero { background:linear-gradient(135deg,var(--brand),var(--brand2)); color:white; padding:28px; border-radius:20px; box-shadow:0 12px 30px rgba(31,78,120,.15); }
+    .hero h1 { margin:0 0 8px; font-size:30px; }
+    .hero p { margin:0; line-height:1.6; opacity:.96; }
+    .note { margin-top:16px; background:var(--warn); border:1px solid #f2df9f; padding:14px 16px; border-radius:14px; line-height:1.55; }
+    .toolbar { position:sticky; top:0; z-index:10; background:rgba(246,248,251,.95); backdrop-filter:blur(8px); padding:14px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button { border:0; border-radius:12px; padding:11px 16px; font-size:15px; cursor:pointer; font-weight:700; }
+    .primary { background:var(--brand); color:#fff; }
+    .secondary { background:#e9eef5; color:#26354a; }
+    .ghost { background:#fff; color:#334155; border:1px solid var(--line); }
+    .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:10px 0 18px; }
+    .stat { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .stat .v { font-size:24px; font-weight:800; color:var(--brand); }
+    .stat .l { font-size:13px; color:var(--muted); margin-top:4px; }
+    .category { margin:22px 0; }
+    .category h2 { font-size:19px; margin:0 0 10px; color:var(--brand); }
+    .item { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:10px 0; display:grid; grid-template-columns:1fr 260px; gap:18px; align-items:center; }
+    .item h3 { margin:0 0 6px; font-size:17px; }
+    .item p { margin:0; color:var(--muted); font-size:14px; line-height:1.55; }
+    .rate { display:grid; grid-template-columns:1fr 56px; gap:10px; align-items:center; }
+    input[type=range] { width:100%; accent-color:var(--brand2); }
+    .score { height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:var(--soft); font-size:20px; font-weight:800; color:var(--brand); }
+    .normalized { margin-top:8px; font-size:12px; color:var(--muted); text-align:left; direction:ltr; }
+    .footer-card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; margin-top:26px; }
+    .footer-card h3 { margin-top:0; }
+    .namebox { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    input[type=text] { flex:1; min-width:220px; border:1px solid var(--line); border-radius:10px; padding:11px 12px; font-size:15px; }
+    .small { font-size:13px; color:var(--muted); line-height:1.5; }
+    @media (max-width:760px) {
+      .item { grid-template-columns:1fr; }
+      .summary { grid-template-columns:1fr; }
+      .hero h1 { font-size:24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>מפת ההעדפות שלי</h1>
+    <p>המטרה בשלב הזה היא להבין <strong>מה באמת חשוב לך</strong> — בלי לחשוב כרגע על דירה א' או דירה ב'. רק אחרי שמסיימים את המשקולות, עוברים לציינון הבתים.</p>
+  </section>
+
+  <div class="note"><strong>כלל הזהב:</strong> בזמן דירוג החשיבות אל תשאלי “באיזה בית זה טוב יותר?”. שאלי רק: “אם לא הייתי יודעת אילו שתי דירות עומדות מולי — כמה הדבר הזה חשוב לי?”</div>
+
+  <div class="toolbar">
+    <button class="primary" onclick="downloadJSON()">ייצוא משקולות JSON</button>
+    <button class="secondary" onclick="downloadCSV()">ייצוא CSV</button>
+    <button class="secondary" onclick="document.getElementById('importFile').click()">ייבוא משקולות</button>
+    <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden onchange="importWeights(event)">
+    <button class="ghost" onclick="copySummary()">העתקת תקציר</button>
+    <button class="ghost" onclick="resetAll()">איפוס</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><div class="v" id="criteriaCount">0</div><div class="l">קריטריונים</div></div>
+    <div class="stat"><div class="v" id="rawTotal">0</div><div class="l">סכום דירוגי חשיבות</div></div>
+    <div class="stat"><div class="v" id="normTotal">100%</div><div class="l">סכום לאחר נרמול</div></div>
+  </div>
+
+  <div class="footer-card">
+    <h3>שם המדרג/ת</h3>
+    <div class="namebox"><input id="personName" type="text" placeholder="למשל: נועה"></div>
+    <p class="small">הנתונים נשמרים אוטומטית בדפדפן במכשיר הזה. אפשר לסגור ולחזור מאוחר יותר.</p>
+  </div>
+
+  <div class="footer-card"><strong>כלי הרכישה:</strong> <a href="../../">חזרה למחשבון רכישה ומשכנתא</a></div>
+
+  <main id="criteria"></main>
+
+  <div class="footer-card">
+    <h3>מה קורה אחרי זה?</h3>
+    <p class="small">מייצאים את המשקולות. אחר כך אפשר לחבר את הקובץ שלך ואת הקובץ שלה, לחשב משקל משותף/ממוצע מנורמל, ורק אז לפתוח שלב שני שבו מדרגים כל בית 1–10 לפי כל קריטריון.</p>
+  </div>
+</div>
+
+<script>
+const CRITERIA = [{"category": "כלכלה ועלות", "criterion": "עלות חודשית כוללת", "explanation": "משכנתה/שכירות חלופית, ארנונה, ועד/ניהול, ביטוחים ותחזוקה שוטפת."}, {"category": "כלכלה ועלות", "criterion": "עלות רכישה + שיפוץ כוללת", "explanation": "העלות האמיתית עד כניסה: מחיר, מסים/עו״ד/תיווך, שיפוץ, מטבח, נגרות ורזרבה."}, {"category": "כלכלה ועלות", "criterion": "סיכון לחריגות תקציב", "explanation": "עד כמה התקציב צפוי וברור לעומת סיכון להפתעות וחריגות."}, {"category": "כלכלה ועלות", "criterion": "עלות תחזוקה עתידית", "explanation": "מערכות, גינה/חצר, מעטפת, איטום, מיזוג ואלמנטים שידרשו כסף לאורך השנים."}, {"category": "ילדים ופרטיות", "criterion": "חדר פרטי מתאים לכל ילד", "explanation": "גודל, צורה, אחסון, אור ויכולת להישאר מתאים גם בגיל ההתבגרות."}, {"category": "ילדים ופרטיות", "criterion": "פרטיות בין הילדים", "explanation": "מרחק/הפרדה אקוסטית ותכנונית בין חדרי הילדים."}, {"category": "ילדים ופרטיות", "criterion": "שירותים ומקלחת לילדים", "explanation": "זמינות, נוחות ועצמאות; עדיפות לפתרון שאינו יוצר עומס בבוקר/ערב."}, {"category": "ילדים ופרטיות", "criterion": "אזור ילדים עצמאי", "explanation": "יכולת ליצור אזור/מפלס ילדים עם פרטיות אך ללא ניתוק מוגזם מהמשפחה."}, {"category": "ילדים ופרטיות", "criterion": "מרחב ללימודים/חברים", "explanation": "מקום נוח ללמידה, מחשב, אירוח חברים ופעילות בלי להשתלט על הסלון."}, {"category": "יחידת הורים", "criterion": "איכות יחידת ההורים", "explanation": "חדר מרווח ונעים, פרטיות, אור, תחושת סוויטה ואפשרות לריהוט טוב."}, {"category": "יחידת הורים", "criterion": "מקלחת/שירותים צמודים להורים", "explanation": "יחידה צמודה נוחה ואיכותית, כולל הפרדה טובה מהאזורים הציבוריים."}, {"category": "יחידת הורים", "criterion": "אחסון הורים / חדר ארונות", "explanation": "כמות ואיכות האחסון בלי להעמיס ארונות על החדר."}, {"category": "עבודה ולימודים", "criterion": "משרד עבודה סגור", "explanation": "חדר אמיתי לעבודה, כולל שיחות וידאו ויכולת לסגור דלת."}, {"category": "עבודה ולימודים", "criterion": "אפשרות לשתי עמדות עבודה/לימוד", "explanation": "גמישות לעבודה מקבילה של שני אנשים או עבודה + לימודים."}, {"category": "עבודה ולימודים", "criterion": "שקט ופרטיות לעבודה", "explanation": "הפרדה אקוסטית ותנועתית מהסלון, מטבח וחדרי הילדים."}, {"category": "אירוח ומשפחה", "criterion": "יחידת/חדר אירוח", "explanation": "יכולת לארח בנוחות ללילה בלי לפגוע בשגרת הבית."}, {"category": "אירוח ומשפחה", "criterion": "שירותים/מקלחת לאורחים", "explanation": "פתרון נגיש לאורחים, רצוי ללא צורך להשתמש בחדרי הרחצה הפרטיים."}, {"category": "אירוח ומשפחה", "criterion": "פרטיות הדדית בזמן אירוח", "explanation": "האורחים והמשפחה יכולים להתנהל במקביל בלי להפריע זה לזה."}, {"category": "מרחב ציבורי", "criterion": "גודל ואיכות הסלון", "explanation": "שטח שימושי, פרופורציות, קירות לריהוט, מרחקי צפייה ותחושת מרחב."}, {"category": "מרחב ציבורי", "criterion": "Open Space סלון–מטבח", "explanation": "פתיחות אמיתית, קשר עין וזרימה טובה ללא צווארי בקבוק."}, {"category": "מרחב ציבורי", "criterion": "איכות וגודל המטבח", "explanation": "משטחי עבודה, אחסון, מזווה, מכשירים ויכולת למטבח גדול/אי."}, {"category": "מרחב ציבורי", "criterion": "פינת אוכל ואירוח רב משתתפים", "explanation": "מקום קבוע או גמיש לשולחן גדול בלי לחסום מעברים."}, {"category": "מרחב ציבורי", "criterion": "אור טבעי, פתחים ותחושת מרחב", "explanation": "כמות אור, כיווני אוויר, חלונות/ויטרינות והקשר לחוץ."}, {"category": "מרחב ציבורי", "criterion": "זרימה ותכנון פונקציונלי", "explanation": "המעברים בין כניסה, מטבח, סלון, חוץ וחדרים טבעיים וללא שטחים מבוזבזים."}, {"category": "חוץ", "criterion": "גודל ושימושיות החצר/מרפסת", "explanation": "שטח שאפשר באמת להשתמש בו לאוכל, אירוח, משחק או ישיבה."}, {"category": "חוץ", "criterion": "מספר אזורי חוץ והפרדה ביניהם", "explanation": "חצר/מרפסת נוספת יכולה לאפשר שימושים שונים: אירוח, ילדים, שירות."}, {"category": "חוץ", "criterion": "פרטיות, שמש ונוף בחוץ", "explanation": "מידת החשיפה לשכנים, שעות שמש/צל, נוף ואיכות השהייה."}, {"category": "שיפוץ וסיכון", "criterion": "מורכבות ומשך השיפוץ", "explanation": "כמה תכנון, הריסה, תיאום בעלי מקצוע וזמן נדרשים כדי להגיע לתוצאה הרצויה."}, {"category": "שיפוץ וסיכון", "criterion": "סיכון תכנוני/הנדסי בשיפוץ", "explanation": "תלות בקונסטרוקטור, היתר, קירות/פתחים, איטום או מגבלות שעלולות לשנות את התוכנית."}, {"category": "עתיד והשבחה", "criterion": "גמישות עתידית ושינוי שימושים", "explanation": "אפשרות לשנות שימושים בעתיד: יחידת דיור/הפרדה, התאמה לילדים בוגרים, שינוי חלוקת חללים ושימושים משתנים לאורך השנים."}, {"category": "מיקום ונגישות", "criterion": "איכות המיקום לחיי היומיום", "explanation": "קרבה למסגרות, קניות, שירותים ומקומות שמגיעים אליהם בתדירות גבוהה."}, {"category": "מיקום ונגישות", "criterion": "זמני נסיעה ונגישות", "explanation": "נוחות היציאה והחזרה, עומסי תנועה, תחבורה וחיבור לצירים מרכזיים."}, {"category": "מיקום ונגישות", "criterion": "סביבה, רעש ופרטיות כללית", "explanation": "רעש רחוב/שכנים, תחושת פרטיות, איכות הרחוב והסביבה הקרובה."}, {"category": "פרקטיקה יומיומית", "criterion": "חניה, מחסן ואחסון כללי", "explanation": "מספר/נוחות חניות, מחסן ואחסון לציוד משפחתי, אופניים, מזוודות וכדומה."}, {"category": "מיקום ונגישות", "criterion": "נגישות הולכי רגל", "explanation": "כמה נוח ובטוח להגיע ברגל ליעדים יומיומיים: מדרכות, חציות, שיפועים, תאורה ורצף הליכה."}, {"category": "מיקום ונגישות", "criterion": "קרבה לפארק / שטח ירוק", "explanation": "מרחק הליכה לפארק או שטח ירוק איכותי שמתאים לטיול, ספורט, שהייה משפחתית ושימוש יומיומי."}, {"category": "מיקום ונגישות", "criterion": "קרבה לתחבורה ציבורית", "explanation": "מרחק הליכה לתחנת אוטובוס/תחבורה שימושית, תדירות הקווים והאם אפשר להסתדר בלי תלות מלאה ברכב."}, {"category": "מיקום ונגישות", "criterion": "קרבה לסופר וקניות יומיומיות", "explanation": "האם סופר, מכולת ושירותים בסיסיים נמצאים במרחק הליכה נוח ולא מחייבים נסיעה לכל סידור קטן."}, {"category": "מיקום ונגישות", "criterion": "קרבה לגני שעשועים / פעילות ילדים", "explanation": "נגישות ברגל לגני משחקים, מתקני פנאי ומרחבים שמתאימים לילדים ולמפגש עם חברים."}, {"category": "עתיד והשבחה", "criterion": "התאמה אישית לצרכים שלנו / קסטומיזציה", "explanation": "עד כמה אפשר לשנות את פנים הבית ולהגיע לתכנון המדויק שלנו: חלוקת חדרים, פתיחת חללים, משרד, סוויטות, אחסון ושימושים עתידיים."}, {"category": "כלכלה ועלות", "criterion": "עומס מימון ותזרים לאורך זמן", "explanation": "גודל וחפיפה של הלוואות, תקופות עם שתי התחייבויות גדולות במקביל, יכולת לבצע השקעות בשלבים וגמישות אם המעבר או השיפוץ מתארכים."}, {"category": "עתיד והשבחה", "criterion": "פוטנציאל השבחה כלכלית / יצירת ערך", "explanation": "עד כמה קיים פער בין מצב הנכס היום לבין הערך שאפשר ליצור באמצעות שיפוץ איכותי ומודרני, שיפור תכנון, הוספת ממ״ד/פונקציות ושדרוג רמת הנכס — ועד כמה השוק צפוי לתמחר את השיפור במכירה עתידית."}];
+const STORAGE_KEY = "home_decision_preferences_v1";
+
+function stateFromStorage() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch(e) { return {}; }
+}
+let state = stateFromStorage();
+if (!state.scores) state.scores = {};
+
+function save() {
+  state.name = document.getElementById("personName").value || "";
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function normalizedMap() {
+  const vals = CRITERIA.map((_,i) => Number(state.scores[i] ?? 5));
+  const total = vals.reduce((a,b)=>a+b,0);
+  return vals.map(v => total ? (v/total*100) : 0);
+}
+
+function render() {
+  document.getElementById("personName").value = state.name || "";
+  const root = document.getElementById("criteria");
+  root.innerHTML = "";
+  const groups = {};
+  CRITERIA.forEach((c,i) => {
+    if (!groups[c.category]) groups[c.category] = [];
+    groups[c.category].push([c,i]);
+  });
+
+  const norm = normalizedMap();
+
+  Object.entries(groups).forEach(([cat, items]) => {
+    const section = document.createElement("section");
+    section.className = "category";
+    const h2 = document.createElement("h2");
+    h2.textContent = cat;
+    section.appendChild(h2);
+
+    items.forEach(([c,i]) => {
+      const score = Number(state.scores[i] ?? 5);
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div>
+          <h3>${escapeHtml(c.criterion)}</h3>
+          <p>${escapeHtml(c.explanation)}</p>
+        </div>
+        <div>
+          <div class="rate">
+            <input aria-label="חשיבות ${escapeHtml(c.criterion)}" type="range" min="1" max="10" step="1" value="${score}" oninput="setScore(${i}, this.value)">
+            <div class="score" id="score-${i}">${score}</div>
+          </div>
+          <div class="normalized">משקל מנורמל: <span id="norm-${i}">${norm[i].toFixed(2)}%</span></div>
+        </div>`;
+      section.appendChild(div);
+    });
+    root.appendChild(section);
+  });
+
+  refreshSummary();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function setScore(i, value) {
+  state.scores[i] = Number(value);
+  document.getElementById("score-"+i).textContent = value;
+  const norm = normalizedMap();
+  norm.forEach((n,idx) => {
+    const el = document.getElementById("norm-"+idx);
+    if(el) el.textContent = n.toFixed(2)+"%";
+  });
+  refreshSummary();
+  save();
+}
+
+function refreshSummary() {
+  const vals = CRITERIA.map((_,i)=>Number(state.scores[i] ?? 5));
+  document.getElementById("criteriaCount").textContent = CRITERIA.length;
+  document.getElementById("rawTotal").textContent = vals.reduce((a,b)=>a+b,0);
+}
+
+function exportObject() {
+  save();
+  const norm = normalizedMap();
+  return {
+    version: 1,
+    person: state.name || "",
+    createdAt: new Date().toISOString(),
+    scale: "1-10",
+    normalizedTo: 100,
+    criteria: CRITERIA.map((c,i)=>({
+      category:c.category,
+      criterion:c.criterion,
+      importance:Number(state.scores[i] ?? 5),
+      normalizedWeight:Number(norm[i].toFixed(4))
+    }))
+  };
+}
+
+function download(name, content, type) {
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function safeName() {
+  const n = (document.getElementById("personName").value || "משקולות").trim();
+  return n.replace(/[\\/:*?"<>|\s]+/g,"_");
+}
+
+function downloadJSON() {
+  download(`משקולות_${safeName()}.json`, JSON.stringify(exportObject(), null, 2), "application/json;charset=utf-8");
+}
+
+function downloadCSV() {
+  const d = exportObject();
+  const rows = [["קטגוריה","קריטריון","דירוג חשיבות 1-10","משקל מנורמל %"]];
+  d.criteria.forEach(x => rows.push([x.category,x.criterion,x.importance,x.normalizedWeight]));
+  const csv = "\ufeff" + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  download(`משקולות_${safeName()}.csv`, csv, "text/csv;charset=utf-8");
+}
+
+async function copySummary() {
+  const d = exportObject();
+  const top = [...d.criteria].sort((a,b)=>b.normalizedWeight-a.normalizedWeight).slice(0,8);
+  const text = `מפת העדפות – ${d.person || "ללא שם"}\n` +
+    top.map((x,i)=>`${i+1}. ${x.criterion} — ${x.importance}/10 (${x.normalizedWeight.toFixed(2)}%)`).join("\n");
+  try { await navigator.clipboard.writeText(text); alert("התקציר הועתק"); }
+  catch(e) { alert(text); }
+}
+
+function importWeights(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = String(reader.result || "");
+      let imported = [];
+      let person = "";
+      if (file.name.toLowerCase().endsWith(".json")) {
+        const obj = JSON.parse(text);
+        imported = Array.isArray(obj.criteria) ? obj.criteria : [];
+        person = obj.person || "";
+      } else {
+        const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+        const parse = line => {
+          const out=[]; let cur="", q=false;
+          for(let i=0;i<line.length;i++) {
+            const ch=line[i];
+            if(ch==='"' && q && line[i+1]==='"') { cur+='"'; i++; }
+            else if(ch==='"') q=!q;
+            else if(ch===',' && !q) { out.push(cur); cur=""; }
+            else cur+=ch;
+          }
+          out.push(cur); return out;
+        };
+        imported = lines.slice(1).map(parse).map(r => ({category:r[0], criterion:r[1], importance:Number(r[2])}));
+      }
+      const byCriterion = new Map(imported.map(x => [x.criterion, Number(x.importance)]));
+      let matched=0;
+      CRITERIA.forEach((c,i) => {
+        const v=byCriterion.get(c.criterion);
+        if(Number.isFinite(v) && v>=1 && v<=10) { state.scores[i]=Math.round(v); matched++; }
+      });
+      if(person) state.name=person;
+      save(); render();
+      alert(`יובאו ${matched} מתוך ${CRITERIA.length} קריטריונים.`);
+    } catch (err) {
+      alert("לא הצלחנו לייבא את הקובץ. ודאו שזה קובץ JSON/CSV שיוצא מהעמוד הזה.");
+    } finally {
+      event.target.value="";
+    }
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+function resetAll() {
+  if (!confirm("לאפס את כל הדירוגים?")) return;
+  state = {name: document.getElementById("personName").value || "", scores:{}};
+  save(); render();
+}
+
+document.getElementById("personName").addEventListener("input", save);
+render();
+</script>
+</body>
+</html>
