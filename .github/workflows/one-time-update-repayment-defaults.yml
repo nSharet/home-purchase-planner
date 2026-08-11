@@ -1,0 +1,57 @@
+name: One-time update repayment defaults
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-defaults:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update repayment defaults
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/app.js')
+          text = p.read_text(encoding='utf-8')
+          old = """const defaultRepayments = () => [
+            { id: uid(), loan: 1000000, payment: 5000 },
+            { id: uid(), loan: 1200000, payment: 6000 },
+            { id: uid(), loan: 1400000, payment: 7000 },
+            { id: uid(), loan: 1600000, payment: 8000 },
+            { id: uid(), loan: 1700000, payment: 8800 },
+            { id: uid(), loan: 1800000, payment: 9500 },
+            { id: uid(), loan: 2000000, payment: 10500 }
+          ];"""
+          new = """const defaultRepayments = () => [
+            { id: uid(), loan: 1000000, payment: 5000 },
+            { id: uid(), loan: 1200000, payment: 6165 },
+            { id: uid(), loan: 1350000, payment: 6950 },
+            { id: uid(), loan: 1400000, payment: 7000 },
+            { id: uid(), loan: 1500000, payment: 7740 },
+            { id: uid(), loan: 1600000, payment: 8000 },
+            { id: uid(), loan: 1650000, payment: 8500 },
+            { id: uid(), loan: 1700000, payment: 8800 },
+            { id: uid(), loan: 1750000, payment: 9008 },
+            { id: uid(), loan: 1800000, payment: 9500 },
+            { id: uid(), loan: 2000000, payment: 10500 }
+          ];"""
+          if old not in text:
+              raise SystemExit('Expected repayment block not found; refusing to modify.')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit updated defaults
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Update mortgage repayment defaults"
+          git push
