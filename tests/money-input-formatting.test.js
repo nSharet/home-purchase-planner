@@ -8,8 +8,8 @@ test('money inputs use thousands-separator formatting helpers', () => {
   assert.match(app, /function parseMoneyInput\(value\)/);
   assert.match(app, /function formatMoneyInput\(value\)/);
   assert.match(app, /'propertyPrice'.*'existingPropertyValue'.*'existingPropertyDebt'/s);
-  assert.match(app, /inputmode=\\"numeric\\" dir=\\"ltr\\" data-k=\\"loan\\"/);
-  assert.match(app, /inputmode=\\"numeric\\" dir=\\"ltr\\" data-k=\\"payment\\"/);
-  assert.match(app, /inputmode=\\"numeric\\" dir=\\"ltr\\" data-k=\\"amount\\"/);
+  assert.match(app, /inputmode="numeric" dir="ltr" data-k="loan"/);
+  assert.match(app, /inputmode="numeric" dir="ltr" data-k="payment"/);
+  assert.match(app, /inputmode="numeric" dir="ltr" data-k="amount"/);
   assert.match(app, /previewInput\.value = formatMoneyInput\(s\.propertyPrice\)/);
 });
