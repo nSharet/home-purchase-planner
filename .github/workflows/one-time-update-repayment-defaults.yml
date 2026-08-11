@@ -47,11 +47,12 @@ jobs:
               raise SystemExit('Expected repayment block not found; refusing to modify.')
           p.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
-      - name: Commit updated defaults
+      - name: Commit and push PR branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b agent/update-repayment-defaults
           git add src/app.js
           git diff --cached --quiet && exit 0
           git commit -m "Update mortgage repayment defaults"
-          git push
+          git push -u origin agent/update-repayment-defaults
