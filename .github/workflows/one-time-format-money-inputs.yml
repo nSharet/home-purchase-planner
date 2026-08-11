@@ -1,0 +1,80 @@
+name: One-time format money inputs
+
+on:
+  push:
+    branches: [agent/format-money-inputs]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-money-inputs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/format-money-inputs
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Format monetary inputs with thousands separators
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/app.js')
+          text = p.read_text(encoding='utf-8')
+
+          old = """function uid() { return Math.random().toString(36).slice(2, 10); }\nconst n = calculator.n;\nconst clamp = calculator.clamp;\nfunction money(value) { return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(Math.round(n(value))); }\nfunction percent(value, digits = 1) { return `${n(value).toFixed(digits)}%`; }\nfunction isoDateToday() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }"""
+          new = """function uid() { return Math.random().toString(36).slice(2, 10); }\nconst n = calculator.n;\nconst clamp = calculator.clamp;\nconst MONEY_FIELD_IDS = new Set([\n  'propertyPrice','appraisalValue','manualTax','appraisalCost','mortgageFees','registrationCosts','movingCosts','otherTransactionCosts',\n  'liquidEquity','otherEquity','reserveCash','existingPropertyValue','existingPropertyDebt','manualMortgageAdjustment'\n]);\nconst MONEY_AUX_FIELD_IDS = ['previewPropertyPrice','targetMonthlyPayment'];\nfunction parseMoneyInput(value) {\n  const cleaned = String(value ?? '').replace(/[^0-9.-]/g, '');\n  if (cleaned === '' || cleaned === '-' || cleaned === '.') return null;\n  const parsed = Number(cleaned);\n  return Number.isFinite(parsed) ? parsed : null;\n}\nfunction formatMoneyInput(value) {\n  const parsed = typeof value === 'number' ? value : parseMoneyInput(value);\n  if (parsed === null || !Number.isFinite(parsed)) return '';\n  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(parsed));\n}\nfunction configureMoneyInput(el) {\n  if (!el) return;\n  el.type = 'text';\n  el.inputMode = 'numeric';\n  el.autocomplete = 'off';\n  el.dir = 'ltr';\n}\nfunction moneyInputValue(el) { return parseMoneyInput(el?.value) ?? 0; }\nfunction money(value) { return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(Math.round(n(value))); }\nfunction percent(value, digits = 1) { return `${n(value).toFixed(digits)}%`; }\nfunction isoDateToday() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }"""
+          if old not in text: raise SystemExit('helper block not found')
+          text = text.replace(old, new, 1)
+
+          old = """function bindFields() {\n  fieldIds.forEach(id => {\n    const el = document.getElementById(id);\n    const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';\n    el.addEventListener(eventName, () => {\n      const s = active();\n      const key = keyMap[id] || id;\n      s[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);\n      if (id === 'purchaseType') s.maxLtvOverride = getDefaultLtv(s.purchaseType);\n      if (id === 'taxMode') document.getElementById('manualTax').disabled = s.taxMode !== 'manual';\n      saveState(); render();\n    });\n  });\n}"""
+          new = """function bindFields() {\n  fieldIds.forEach(id => {\n    const el = document.getElementById(id);\n    if (MONEY_FIELD_IDS.has(id)) configureMoneyInput(el);\n    const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';\n    el.addEventListener(eventName, () => {\n      const s = active();\n      const key = keyMap[id] || id;\n      if (MONEY_FIELD_IDS.has(id)) {\n        s[key] = parseMoneyInput(el.value);\n      } else {\n        s[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);\n      }\n      if (id === 'purchaseType') s.maxLtvOverride = getDefaultLtv(s.purchaseType);\n      if (id === 'taxMode') document.getElementById('manualTax').disabled = s.taxMode !== 'manual';\n      saveState(); render();\n    });\n  });\n  MONEY_AUX_FIELD_IDS.forEach(id => configureMoneyInput(document.getElementById(id)));\n}"""
+          if old not in text: raise SystemExit('bindFields block not found')
+          text = text.replace(old, new, 1)
+
+          old = """    if (el.type === 'checkbox') el.checked = !!s[key];\n    else el.value = s[key] ?? '';"""
+          new = """    if (el.type === 'checkbox') el.checked = !!s[key];\n    else if (MONEY_FIELD_IDS.has(id)) el.value = formatMoneyInput(s[key]);\n    else el.value = s[key] ?? '';"""
+          if old not in text: raise SystemExit('populate assignment not found')
+          text = text.replace(old, new, 1)
+
+          old = """      <td><input type=\"number\" min=\"0\" step=\"500\" data-k=\"amount\" value=\"${n(row.amount)}\" /></td>"""
+          new = """      <td><input type=\"text\" inputmode=\"numeric\" dir=\"ltr\" data-k=\"amount\" value=\"${formatMoneyInput(row.amount)}\" /></td>"""
+          if old not in text: raise SystemExit('renovation amount input not found')
+          text = text.replace(old, new, 1)
+
+          old = """        row[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);\n        saveState(); renderComputedOnly();"""
+          new = """        row[key] = el.type === 'checkbox' ? el.checked : (key === 'amount' ? parseMoneyInput(el.value) : el.value);\n        if (key === 'amount') el.value = formatMoneyInput(row[key]);\n        saveState(); renderComputedOnly();"""
+          if old not in text: raise SystemExit('renovation input handler not found')
+          text = text.replace(old, new, 1)
+
+          old = """      <td><input type=\"number\" min=\"0\" step=\"10000\" data-k=\"loan\" value=\"${n(row.loan)}\" /></td>\n      <td><input type=\"number\" min=\"0\" step=\"100\" data-k=\"payment\" value=\"${n(row.payment)}\" /></td>"""
+          new = """      <td><input type=\"text\" inputmode=\"numeric\" dir=\"ltr\" data-k=\"loan\" value=\"${formatMoneyInput(row.loan)}\" /></td>\n      <td><input type=\"text\" inputmode=\"numeric\" dir=\"ltr\" data-k=\"payment\" value=\"${formatMoneyInput(row.payment)}\" /></td>"""
+          if old not in text: raise SystemExit('repayment inputs not found')
+          text = text.replace(old, new, 1)
+
+          old = """    tr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => {\n      row[el.dataset.k] = n(el.value); saveState(); renderComputedOnly();\n    }));"""
+          new = """    tr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => {\n      row[el.dataset.k] = parseMoneyInput(el.value) ?? 0;\n      el.value = formatMoneyInput(row[el.dataset.k]);\n      saveState(); renderComputedOnly();\n    }));"""
+          if old not in text: raise SystemExit('repayment handler not found')
+          text = text.replace(old, new, 1)
+
+          text = text.replace("previewInput.value = n(s.propertyPrice);", "previewInput.value = formatMoneyInput(s.propertyPrice);")
+          text = text.replace("const previewPrice = n(previewInput.value);", "const previewPrice = moneyInputValue(previewInput);")
+          text = text.replace("const target = n(document.getElementById('targetMonthlyPayment').value);", "const target = moneyInputValue(document.getElementById('targetMonthlyPayment'));")
+          text = text.replace("active().propertyPrice = n(document.getElementById('previewPropertyPrice').value);", "active().propertyPrice = moneyInputValue(document.getElementById('previewPropertyPrice'));")
+
+          old = """document.getElementById('previewPropertyPrice').addEventListener('input', renderDecisionLab);\ndocument.getElementById('targetMonthlyPayment').addEventListener('input', renderDecisionLab);"""
+          new = """document.getElementById('previewPropertyPrice').addEventListener('input', e => { e.target.value = formatMoneyInput(e.target.value); renderDecisionLab(); });\ndocument.getElementById('targetMonthlyPayment').addEventListener('input', e => { e.target.value = formatMoneyInput(e.target.value); renderDecisionLab(); });"""
+          if old not in text: raise SystemExit('decision lab listeners not found')
+          text = text.replace(old, new, 1)
+
+          p.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit money formatting update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Format monetary inputs with thousands separators"
+          git push origin HEAD:agent/format-money-inputs
