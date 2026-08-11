@@ -19,10 +19,14 @@ const defaultRenovations = () => [
 
 const defaultRepayments = () => [
   { id: uid(), loan: 1000000, payment: 5000 },
-  { id: uid(), loan: 1200000, payment: 6000 },
+  { id: uid(), loan: 1200000, payment: 6165 },
+  { id: uid(), loan: 1350000, payment: 6950 },
   { id: uid(), loan: 1400000, payment: 7000 },
+  { id: uid(), loan: 1500000, payment: 7740 },
   { id: uid(), loan: 1600000, payment: 8000 },
+  { id: uid(), loan: 1650000, payment: 8500 },
   { id: uid(), loan: 1700000, payment: 8800 },
+  { id: uid(), loan: 1750000, payment: 9008 },
   { id: uid(), loan: 1800000, payment: 9500 },
   { id: uid(), loan: 2000000, payment: 10500 }
 ];
