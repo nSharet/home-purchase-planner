@@ -34,6 +34,30 @@ const defaultRepayments = () => [
 function uid() { return Math.random().toString(36).slice(2, 10); }
 const n = calculator.n;
 const clamp = calculator.clamp;
+const MONEY_FIELD_IDS = new Set([
+  'propertyPrice','appraisalValue','manualTax','appraisalCost','mortgageFees','registrationCosts','movingCosts','otherTransactionCosts',
+  'liquidEquity','otherEquity','reserveCash','existingPropertyValue','existingPropertyDebt','manualMortgageAdjustment'
+]);
+const MONEY_AUX_FIELD_IDS = ['previewPropertyPrice','targetMonthlyPayment'];
+function parseMoneyInput(value) {
+  const cleaned = String(value ?? '').replace(/[^0-9.-]/g, '');
+  if (cleaned === '' || cleaned === '-' || cleaned === '.') return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+function formatMoneyInput(value) {
+  const parsed = typeof value === 'number' ? value : parseMoneyInput(value);
+  if (parsed === null || !Number.isFinite(parsed)) return '';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(parsed));
+}
+function configureMoneyInput(el) {
+  if (!el) return;
+  el.type = 'text';
+  el.inputMode = 'numeric';
+  el.autocomplete = 'off';
+  el.dir = 'ltr';
+}
+function moneyInputValue(el) { return parseMoneyInput(el?.value) ?? 0; }
 function money(value) { return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(Math.round(n(value))); }
 function percent(value, digits = 1) { return `${n(value).toFixed(digits)}%`; }
 function isoDateToday() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
@@ -98,16 +122,22 @@ const keyMap = { scenarioName: 'name' };
 function bindFields() {
   fieldIds.forEach(id => {
     const el = document.getElementById(id);
+    if (MONEY_FIELD_IDS.has(id)) configureMoneyInput(el);
     const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
     el.addEventListener(eventName, () => {
       const s = active();
       const key = keyMap[id] || id;
-      s[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);
+      if (MONEY_FIELD_IDS.has(id)) {
+        s[key] = parseMoneyInput(el.value);
+      } else {
+        s[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);
+      }
       if (id === 'purchaseType') s.maxLtvOverride = getDefaultLtv(s.purchaseType);
       if (id === 'taxMode') document.getElementById('manualTax').disabled = s.taxMode !== 'manual';
       saveState(); render();
     });
   });
+  MONEY_AUX_FIELD_IDS.forEach(id => configureMoneyInput(document.getElementById(id)));
 }
 
 function populateForm() {
@@ -116,6 +146,7 @@ function populateForm() {
     const el = document.getElementById(id);
     const key = keyMap[id] || id;
     if (el.type === 'checkbox') el.checked = !!s[key];
+    else if (MONEY_FIELD_IDS.has(id)) el.value = formatMoneyInput(s[key]);
     else el.value = s[key] ?? '';
   });
   document.getElementById('manualTax').disabled = s.taxMode !== 'manual';
@@ -145,13 +176,14 @@ function renderRenovations() {
         ${['תיקון מהותי','תשתיות','חדרי רחצה','מטבח','גמר','מערכות','נגרות','אבזור','עיצוב','ריהוט','אחר'].map(x => `<option ${x===row.group?'selected':''}>${x}</option>`).join('')}
       </select></td>
       <td><input type="text" data-k="name" value="${escapeHtml(row.name)}" /></td>
-      <td><input type="number" min="0" step="500" data-k="amount" value="${n(row.amount)}" /></td>
+      <td><input type="text" inputmode="numeric" dir="ltr" data-k="amount" value="${formatMoneyInput(row.amount)}" /></td>
       <td class="no-print"><button class="icon-btn" data-action="delete">מחיקה</button></td>`;
     tr.querySelectorAll('[data-k]').forEach(el => {
       const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
       el.addEventListener(eventName, () => {
         const key = el.dataset.k;
-        row[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? null : n(el.value)) : el.value);
+        row[key] = el.type === 'checkbox' ? el.checked : (key === 'amount' ? parseMoneyInput(el.value) : el.value);
+        if (key === 'amount') el.value = formatMoneyInput(row[key]);
         saveState(); renderComputedOnly();
       });
     });
@@ -169,11 +201,13 @@ function renderRepayments() {
   active().repayments.sort((a,b)=>n(a.loan)-n(b.loan)).forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input type="number" min="0" step="10000" data-k="loan" value="${n(row.loan)}" /></td>
-      <td><input type="number" min="0" step="100" data-k="payment" value="${n(row.payment)}" /></td>
+      <td><input type="text" inputmode="numeric" dir="ltr" data-k="loan" value="${formatMoneyInput(row.loan)}" /></td>
+      <td><input type="text" inputmode="numeric" dir="ltr" data-k="payment" value="${formatMoneyInput(row.payment)}" /></td>
       <td class="no-print"><button class="icon-btn" data-action="delete">מחיקה</button></td>`;
     tr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => {
-      row[el.dataset.k] = n(el.value); saveState(); renderComputedOnly();
+      row[el.dataset.k] = parseMoneyInput(el.value) ?? 0;
+      el.value = formatMoneyInput(row[el.dataset.k]);
+      saveState(); renderComputedOnly();
     }));
     tr.querySelector('[data-action="delete"]').addEventListener('click', () => {
       active().repayments = active().repayments.filter(r => r.id !== row.id);
@@ -263,17 +297,17 @@ function renderDecisionLab() {
   const s = active();
   const previewInput = document.getElementById('previewPropertyPrice');
   if (previewInput.dataset.scenarioId !== s.id) {
-    previewInput.value = n(s.propertyPrice);
+    previewInput.value = formatMoneyInput(s.propertyPrice);
     previewInput.dataset.scenarioId = s.id;
   }
-  const previewPrice = n(previewInput.value);
+  const previewPrice = moneyInputValue(previewInput);
   const preview = calculateScenario(s, previewPrice);
   document.getElementById('previewTotalCost').textContent = money(preview.totalCost);
   document.getElementById('previewMortgage').textContent = money(preview.mortgageGap);
   document.getElementById('previewPayment').textContent = money(preview.payment);
   document.getElementById('previewLtv').textContent = percent(preview.ltv);
 
-  const target = n(document.getElementById('targetMonthlyPayment').value);
+  const target = moneyInputValue(document.getElementById('targetMonthlyPayment'));
   const result = calculator.findMaxPropertyPriceForPayment(s, target);
   const box = document.getElementById('targetPriceResult');
   const apply = document.getElementById('applyTargetPriceBtn');
@@ -360,10 +394,10 @@ function downloadFile(filename, content, type) {
 
 bindFields();
 
-document.getElementById('previewPropertyPrice').addEventListener('input', renderDecisionLab);
-document.getElementById('targetMonthlyPayment').addEventListener('input', renderDecisionLab);
+document.getElementById('previewPropertyPrice').addEventListener('input', e => { e.target.value = formatMoneyInput(e.target.value); renderDecisionLab(); });
+document.getElementById('targetMonthlyPayment').addEventListener('input', e => { e.target.value = formatMoneyInput(e.target.value); renderDecisionLab(); });
 document.getElementById('applyPreviewPriceBtn').addEventListener('click', () => {
-  active().propertyPrice = n(document.getElementById('previewPropertyPrice').value);
+  active().propertyPrice = moneyInputValue(document.getElementById('previewPropertyPrice'));
   saveState(); render(); toast('מחיר הבית הוחל על התרחיש');
 });
 document.getElementById('applyTargetPriceBtn').addEventListener('click', () => {
