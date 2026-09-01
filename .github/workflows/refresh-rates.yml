@@ -1,0 +1,53 @@
+name: Refresh mortgage rates
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 12,27 * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch and validate rates
+        run: npm run refresh:rates
+
+      - name: Run tests
+        run: npm test
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- mortgage/data/rates/current.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create update branch
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="automation/refresh-mortgage-rates-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add mortgage/data/rates/current.json
+          git commit -m "Refresh mortgage rate snapshot"
+          git push origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Refresh mortgage rate snapshot" \
+            --body "Automated refresh from the configured mortgage-rate source. The parser and full test suite completed successfully."

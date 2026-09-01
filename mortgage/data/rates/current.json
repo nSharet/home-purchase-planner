@@ -1,0 +1,651 @@
+{
+  "meta": {
+    "sourceName": "Moti - פורטל המשכנתאות",
+    "sourceUrl": "https://www.moti.org.il/interest/main/",
+    "sourceUpdatedAt": "2026-07-21T00:00:00+03:00",
+    "fetchedAt": "2026-09-01T19:15:04.126Z",
+    "optimizerPosition": 0.4,
+    "parserVersion": 1,
+    "note": "טווחי שוק לצורכי אינדיקציה בלבד; כל ריבית ניתנת לעקיפה ידנית."
+  },
+  "baseRates": {
+    "bankOfIsrael": 3.5,
+    "prime": 5
+  },
+  "products": [
+    {
+      "id": "prime",
+      "label": "פריים",
+      "indexed": false,
+      "variable": true,
+      "terms": [
+        {
+          "minYears": 1,
+          "maxYears": 30,
+          "bands": {
+            "upTo45": {
+              "min": 4.1,
+              "max": 4.4
+            },
+            "from45To60": {
+              "min": 4.1,
+              "max": 4.55
+            },
+            "from60To75": {
+              "min": 4.1,
+              "max": 4.55
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "variable-5-unlinked",
+      "label": "משתנה כל 5 לא־צמודה",
+      "indexed": false,
+      "variable": true,
+      "terms": [
+        {
+          "minYears": 1,
+          "maxYears": 30,
+          "bands": {
+            "upTo45": {
+              "min": 4.15,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.15,
+              "max": 4.45
+            },
+            "from60To75": {
+              "min": 4.15,
+              "max": 4.45
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "variable-5-linked",
+      "label": "משתנה כל 5 צמודה",
+      "indexed": true,
+      "variable": true,
+      "terms": [
+        {
+          "minYears": 1,
+          "maxYears": 30,
+          "bands": {
+            "upTo45": {
+              "min": 2.9,
+              "max": 3.2
+            },
+            "from45To60": {
+              "min": 2.9,
+              "max": 3.2
+            },
+            "from60To75": {
+              "min": 2.9,
+              "max": 3.2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "fixed-unlinked",
+      "label": "קל״צ",
+      "indexed": false,
+      "variable": false,
+      "terms": [
+        {
+          "minYears": 4,
+          "maxYears": 5,
+          "bands": {
+            "upTo45": {
+              "min": 3.85,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 6,
+          "maxYears": 7,
+          "bands": {
+            "upTo45": {
+              "min": 3.85,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 8,
+          "maxYears": 9,
+          "bands": {
+            "upTo45": {
+              "min": 3.95,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 10,
+          "maxYears": 11,
+          "bands": {
+            "upTo45": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 12,
+          "maxYears": 13,
+          "bands": {
+            "upTo45": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 14,
+          "maxYears": 15,
+          "bands": {
+            "upTo45": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from45To60": {
+              "min": 4.05,
+              "max": 4.25
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.4
+            }
+          }
+        },
+        {
+          "minYears": 16,
+          "maxYears": 17,
+          "bands": {
+            "upTo45": {
+              "min": 4.1,
+              "max": 4.35
+            },
+            "from45To60": {
+              "min": 4.1,
+              "max": 4.4
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.5
+            }
+          }
+        },
+        {
+          "minYears": 18,
+          "maxYears": 19,
+          "bands": {
+            "upTo45": {
+              "min": 4.1,
+              "max": 4.35
+            },
+            "from45To60": {
+              "min": 4.1,
+              "max": 4.4
+            },
+            "from60To75": {
+              "min": 4.2,
+              "max": 4.5
+            }
+          }
+        },
+        {
+          "minYears": 20,
+          "maxYears": 21,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        },
+        {
+          "minYears": 22,
+          "maxYears": 23,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        },
+        {
+          "minYears": 24,
+          "maxYears": 25,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        },
+        {
+          "minYears": 26,
+          "maxYears": 27,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        },
+        {
+          "minYears": 28,
+          "maxYears": 29,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        },
+        {
+          "minYears": 30,
+          "maxYears": 30,
+          "bands": {
+            "upTo45": {
+              "min": 4.2,
+              "max": 4.45
+            },
+            "from45To60": {
+              "min": 4.2,
+              "max": 4.5
+            },
+            "from60To75": {
+              "min": 4.3,
+              "max": 4.6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "fixed-linked",
+      "label": "קבועה צמודה",
+      "indexed": true,
+      "variable": false,
+      "terms": [
+        {
+          "minYears": 4,
+          "maxYears": 5,
+          "bands": {
+            "upTo45": {
+              "min": 2.55,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.55,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.55,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 6,
+          "maxYears": 7,
+          "bands": {
+            "upTo45": {
+              "min": 2.55,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.55,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.55,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 8,
+          "maxYears": 9,
+          "bands": {
+            "upTo45": {
+              "min": 2.55,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.55,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.55,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 10,
+          "maxYears": 11,
+          "bands": {
+            "upTo45": {
+              "min": 2.65,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.65,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.65,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 12,
+          "maxYears": 13,
+          "bands": {
+            "upTo45": {
+              "min": 2.65,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.65,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.65,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 14,
+          "maxYears": 15,
+          "bands": {
+            "upTo45": {
+              "min": 2.65,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.65,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.65,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 16,
+          "maxYears": 17,
+          "bands": {
+            "upTo45": {
+              "min": 2.65,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.65,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.65,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 18,
+          "maxYears": 19,
+          "bands": {
+            "upTo45": {
+              "min": 2.65,
+              "max": 2.8
+            },
+            "from45To60": {
+              "min": 2.65,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.65,
+              "max": 2.95
+            }
+          }
+        },
+        {
+          "minYears": 20,
+          "maxYears": 21,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 2.95
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        },
+        {
+          "minYears": 22,
+          "maxYears": 23,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 3.25
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        },
+        {
+          "minYears": 24,
+          "maxYears": 25,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 3.25
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        },
+        {
+          "minYears": 26,
+          "maxYears": 27,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 3.25
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        },
+        {
+          "minYears": 28,
+          "maxYears": 29,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 3.25
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        },
+        {
+          "minYears": 30,
+          "maxYears": 30,
+          "bands": {
+            "upTo45": {
+              "min": 2.85,
+              "max": 3.1
+            },
+            "from45To60": {
+              "min": 2.85,
+              "max": 3.25
+            },
+            "from60To75": {
+              "min": 2.85,
+              "max": 3.25
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bridge-unlinked",
+      "label": "גישור לא־צמוד",
+      "indexed": false,
+      "variable": false,
+      "terms": [
+        {
+          "minYears": 0,
+          "maxYears": 3,
+          "bands": {
+            "all": {
+              "min": 4.5,
+              "max": 5.1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bridge-linked",
+      "label": "גישור צמוד",
+      "indexed": true,
+      "variable": false,
+      "terms": [
+        {
+          "minYears": 0,
+          "maxYears": 3,
+          "bands": {
+            "all": {
+              "min": 3.5,
+              "max": 3.8
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
