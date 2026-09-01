@@ -46,7 +46,7 @@
     }
     .btn:hover { filter: brightness(.97); }
     .btn.secondary { background: #fff; color: var(--accent-2); border-color: #cfd8ff; }
-    .btn.ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); }
+    .btn.ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); text-decoration: none; }
     .btn.danger { background: #fff; color: var(--bad); border-color: #f1c9c6; }
     .btn.small { padding: 6px 10px; border-radius: 9px; font-size: .9rem; }
     .scenario-bar {

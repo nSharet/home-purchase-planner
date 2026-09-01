@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="אופטימייזר משכנתה למשפרי דיור בישראל: מעטפת מימון, גישור, תזרים ושלוש חלופות תמהיל." />
+  <title>Mortgage Optimizer — משפרי דיור</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <a class="back-link" href="../">← חזרה ל־Home Purchase Planner</a>
+        <div class="eyebrow">HOME PURCHASE PLANNER</div>
+        <h1>Mortgage Optimizer</h1>
+        <p>בונים את ציר התשלומים והמכירה, בודקים את מעטפת המימון ומקבלים שלוש חלופות שעומדות באילוצים: מאוזנת, יציבה וגמישה.</p>
+      </div>
+      <div class="hero-actions no-print">
+        <button class="btn ghost" id="resetBtn" type="button">איפוס דוגמה</button>
+        <button class="btn ghost" id="printBtn" type="button">הדפסה / PDF</button>
+      </div>
+    </header>
+
+    <nav class="quick-nav no-print" aria-label="ניווט מהיר">
+      <a href="#deal">העסקה</a>
+      <a href="#capacity">יכולת החזר</a>
+      <a href="#timeline">ציר הזמן</a>
+      <a href="#assumptions">הנחות</a>
+      <a href="#results">חלופות</a>
+    </nav>
+
+    <section class="kpis" aria-label="מעטפת המימון">
+      <article class="kpi primary">
+        <span>מימון מרבי על הבית החדש</span>
+        <strong id="kpiNewCapacity">—</strong>
+        <small>עד 70% מהשווי המוכר</small>
+      </article>
+      <article class="kpi">
+        <span>קיבולת גישור על הבית הקיים</span>
+        <strong id="kpiExistingBridge">—</strong>
+        <small>50% מהשווי פחות החוב הקיים</small>
+      </article>
+      <article class="kpi">
+        <span>משכנתה ארוכת טווח נדרשת</span>
+        <strong id="kpiLongNeed">—</strong>
+        <small>החוב שנותר לאחר המכירה</small>
+      </article>
+      <article class="kpi accent">
+        <span>שיא הגישור בתרחיש</span>
+        <strong id="kpiBridgePeak">—</strong>
+        <small id="kpiBridgeSplit">—</small>
+      </article>
+    </section>
+
+    <div class="page-grid">
+      <main>
+        <section class="card" id="deal">
+          <div class="card-head">
+            <div>
+              <span class="step">01</span>
+              <h2>העסקה והנכס הקיים</h2>
+              <p>הנתונים שמגדירים את מעטפת המימון לפני בחירת התמהיל.</p>
+            </div>
+            <span class="status-pill">משפרי דיור · ישראל</span>
+          </div>
+
+          <div class="deal-layout">
+            <div>
+              <div class="section-title">הבית החדש</div>
+              <div class="form-grid compact-grid">
+                <label class="field"><span>מחיר רכישה</span><div class="money-input"><input id="propertyPrice" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>שווי שמאי <small>ריק = מחיר הרכישה</small></span><div class="money-input"><input id="appraisalValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
+
+              <div class="section-title">הבית הקיים</div>
+              <div class="form-grid compact-grid">
+                <label class="field"><span>שווי צפוי במכירה</span><div class="money-input"><input id="existingPropertyValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>יתרת משכנתה קיימת</span><div class="money-input"><input id="existingMortgageBalance" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>החזר חודשי קיים</span><div class="money-input"><input id="existingMortgagePayment" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>עמלת סילוק צפויה</span><div class="money-input"><input id="existingMortgagePayoffFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
+            </div>
+
+            <aside class="cost-panel" aria-labelledby="costPanelTitle">
+              <div class="cost-panel-head">
+                <div><span class="check-mark">✓</span><h3 id="costPanelTitle">עלויות נלוות לרכישה</h3></div>
+                <strong id="acquisitionCostTotal">—</strong>
+              </div>
+              <p>אומדן שמתעדכן לפי מחיר הבית. כל הסכומים ניתנים לעריכה.</p>
+
+              <div class="cost-control tax-control">
+                <label><span>מס רכישה משוער</span><select id="purchaseTaxMode"><option value="auto">חישוב אוטומטי</option><option value="manual">סכום ידני</option></select></label>
+                <strong id="purchaseTaxValue">—</strong>
+              </div>
+              <label class="field manual-tax" id="manualPurchaseTaxField"><span>מס רכישה ידני</span><div class="money-input"><input id="manualPurchaseTax" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+
+              <div class="cost-percent-row">
+                <label class="field"><span>תיווך</span><div class="suffix-input"><input id="brokerPercent" type="number" min="0" max="10" step="0.1" /><b>%</b></div></label>
+                <label class="mini-check"><input id="brokerVat" type="checkbox" /> כולל מע״מ</label>
+                <strong id="brokerageValue">—</strong>
+              </div>
+              <div class="cost-percent-row">
+                <label class="field"><span>עורך דין</span><div class="suffix-input"><input id="lawyerPercent" type="number" min="0" max="10" step="0.1" /><b>%</b></div></label>
+                <label class="mini-check"><input id="lawyerVat" type="checkbox" /> כולל מע״מ</label>
+                <strong id="lawyerValue">—</strong>
+              </div>
+              <label class="field vat-field"><span>שיעור מע״מ לחישוב</span><div class="suffix-input"><input id="vatRate" type="number" min="0" max="30" step="0.1" /><b>%</b></div></label>
+
+              <div class="cost-fixed-grid">
+                <label class="field"><span>שמאות</span><div class="money-input"><input id="appraisalCost" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>פתיחת תיק משכנתה</span><div class="money-input"><input id="mortgageOpeningFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>ייעוץ משכנתה</span><div class="money-input"><input id="mortgageAdvisorCost" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
+
+              <div class="subhead-row additional-head"><h4>עלויות נוספות</h4><button class="text-btn no-print" id="addOtherCost" type="button">+ הוספה</button></div>
+              <div class="other-cost-list" id="otherCosts"></div>
+
+              <div class="cost-notice"><b>חשוב:</b> העלויות נכללות בעלות הפרויקט ובצורך התזרימי, אך אינן מגדילות את שווי הנכס או את תקרת המימון של 70%.</div>
+              <small class="tax-disclaimer">מס הרכישה מחושב כאומדן לפי מדרגות דירה יחידה, בכפוף לעמידת משפר הדיור בתנאי החוק ובמועד מכירת הדירה הקיימת. יש לאמת מול <a href="https://www.gov.il/he/service/real_eatate_taxsimulator" target="_blank" rel="noopener">סימולטור רשות המסים</a>.</small>
+            </aside>
+          </div>
+        </section>
+
+        <section class="card" id="capacity">
+          <div class="card-head">
+            <div><span class="step">02</span><h2>הון, הכנסה ומגבלות</h2><p>כל ההתחייבויות נכללות בתקרת תקופת המעבר.</p></div>
+          </div>
+          <div class="form-grid">
+            <label class="field"><span>הון נזיל ומקורות עצמיים</span><div class="money-input"><input id="liquidEquity" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>רזרבה שלא משתמשים בה</span><div class="money-input"><input id="cashReserve" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>הכנסה חודשית נטו מוכרת</span><div class="money-input"><input id="monthlyNetIncome" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>החזרים אחרים בחודש</span><div class="money-input"><input id="otherMonthlyLoans" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>תקרת החזר בתקופת המעבר</span><div class="money-input"><input id="transitionPaymentCap" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>תקרת החזר לאחר התייצבות</span><div class="money-input"><input id="stablePaymentCap" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+          </div>
+          <div class="inline-note" id="incomeCapNote">—</div>
+        </section>
+
+        <section class="card" id="timeline">
+          <div class="card-head">
+            <div><span class="step">03</span><h2>ציר תשלומים יחסי</h2><p>כל אירוע מוגדר ביחס ל־T. אין צורך בתאריכים מדויקים.</p></div>
+          </div>
+
+          <div class="timeline-columns">
+            <div>
+              <div class="subhead-row"><h3>תשלומי רכישה</h3><button class="text-btn no-print" id="addPurchaseEvent" type="button">+ הוספה</button></div>
+              <div class="event-list" id="purchaseEvents"></div>
+              <div class="event-total"><span>סה״כ בלוח</span><strong id="purchaseTotal">—</strong></div>
+            </div>
+            <div>
+              <div class="subhead-row"><h3>תקבולי מכירה</h3><button class="text-btn no-print" id="addSaleEvent" type="button">+ הוספה</button></div>
+              <div class="event-list" id="saleEvents"></div>
+              <div class="event-total"><span>סה״כ תקבולים ברוטו</span><strong id="saleTotal">—</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="assumptions">
+          <div class="card-head">
+            <div><span class="step">04</span><h2>הנחות האופטימיזציה</h2><p>ריבית העבודה נבחרת מעט מתחת לאמצע טווח השוק וניתנת לשינוי.</p></div>
+            <button class="btn secondary no-print" id="refreshRatesBtn" type="button">רענון ריביות</button>
+          </div>
+
+          <div class="rate-source" id="rateSource">טוען נתוני ריבית…</div>
+          <div class="form-grid">
+            <label class="field"><span>תקופת המשכנתה</span><div class="suffix-input"><input id="termYears" type="number" min="4" max="30" step="1" /><b>שנים</b></div></label>
+            <label class="field"><span>אינפלציה שנתית חזויה</span><div class="suffix-input"><input id="annualInflation" type="number" min="0" max="10" step="0.1" /><b>%</b></div></label>
+            <label class="field"><span>שינוי פריים ממוצע לתרחיש</span><div class="suffix-input"><input id="primeScenarioDelta" type="number" min="-3" max="5" step="0.1" /><b>%</b></div></label>
+            <label class="field"><span>מיקום ריבית העבודה בטווח</span><div class="range-row"><input id="ratePosition" type="range" min="0" max="100" step="5" /><b id="ratePositionValue">40%</b></div></label>
+            <label class="field"><span>עמלות מימון נוספות</span><div class="money-input"><input id="financingFees" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+            <label class="field"><span>עמלת פירעון מוקדם משוערת</span><div class="money-input"><input id="estimatedEarlyRepaymentFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+          </div>
+
+          <div class="toggle-grid">
+            <label class="toggle"><input id="allowIndexed" type="checkbox" /><span></span><b>לאפשר מסלולים צמודי מדד</b></label>
+            <label class="toggle"><input id="bridgeIndexed" type="checkbox" /><span></span><b>לאפשר גישור צמוד מדד</b></label>
+          </div>
+          <div class="rates-preview" id="ratesPreview"></div>
+        </section>
+
+        <section id="results">
+          <div class="results-head">
+            <div><span class="step">05</span><h2>שלוש חלופות</h2><p>בכל פרופיל נבחר הפתרון הזול ביותר שעומד באילוצים שלו.</p></div>
+            <button class="btn primary no-print" id="optimizeBtn" type="button">חשב מחדש</button>
+          </div>
+          <div class="warnings" id="warnings" role="status"></div>
+          <div class="options-grid" id="optionsGrid"></div>
+        </section>
+      </main>
+
+      <aside class="summary-card">
+        <div class="summary-title">תמונת המימון</div>
+        <dl>
+          <div><dt>עלות פרויקט</dt><dd id="summaryProject">—</dd></div>
+          <div><dt>הון זמין כעת</dt><dd id="summaryEquity">—</dd></div>
+          <div><dt>תמורה נטו מהמכירה</dt><dd id="summarySale">—</dd></div>
+          <div><dt>מדרגת מימון</dt><dd id="summaryLtv">—</dd></div>
+          <div><dt>סיום תקופת המעבר</dt><dd id="summaryTransition">—</dd></div>
+        </dl>
+        <div class="summary-divider"></div>
+        <div class="allocation-bar" aria-label="חלוקת מימון מוצעת">
+          <span class="long" id="longBar"></span><span class="bridge" id="bridgeBar"></span>
+        </div>
+        <div class="legend"><span><i class="long-dot"></i>ארוך טווח</span><span><i class="bridge-dot"></i>גישור בשיא</span></div>
+        <p class="disclaimer">כלי תכנון בלבד. התוצאה אינה אישור בנקאי ויש לאמת ריביות, רגולציה ותנאי פירעון מול הבנק ואנשי מקצוע.</p>
+      </aside>
+    </div>
+  </div>
+
+  <template id="eventTemplate">
+    <div class="event-row">
+      <label><span>מועד</span><div class="month-input"><b>T +</b><input class="event-month" type="number" min="0" step="1" /><em>חודשים</em></div></label>
+      <label><span>סכום</span><div class="money-input"><input class="event-amount" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+      <button class="icon-btn remove-event no-print" type="button" aria-label="מחיקת אירוע">×</button>
+    </div>
+  </template>
+
+  <template id="otherCostTemplate">
+    <div class="other-cost-row">
+      <input class="other-cost-label" type="text" aria-label="תיאור עלות נוספת" placeholder="תיאור העלות" />
+      <div class="money-input"><input class="other-cost-amount" type="text" inputmode="numeric" aria-label="סכום עלות נוספת" /><b>₪</b></div>
+      <button class="icon-btn remove-other-cost no-print" type="button" aria-label="מחיקת עלות">×</button>
+    </div>
+  </template>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
