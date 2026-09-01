@@ -135,8 +135,17 @@ export function parseMotiHtml(html, previous) {
 
   next.meta.sourceUrl = SOURCE_URL;
   next.meta.sourceUpdatedAt = newestSourceDate ?? next.meta.sourceUpdatedAt;
-  next.meta.fetchedAt = new Date().toISOString();
   next.meta.parserVersion = 1;
+  const comparable = (snapshot) => JSON.stringify({
+    sourceUrl: snapshot.meta.sourceUrl,
+    sourceUpdatedAt: snapshot.meta.sourceUpdatedAt,
+    parserVersion: snapshot.meta.parserVersion,
+    baseRates: snapshot.baseRates,
+    products: snapshot.products
+  });
+  next.meta.fetchedAt = comparable(next) === comparable(previous)
+    ? previous.meta.fetchedAt
+    : new Date().toISOString();
   return next;
 }
 

@@ -129,3 +129,54 @@ test('reports a permanent funding problem when the long-term need exceeds 70 per
   assert.ok(result.warnings.some((warning) => warning.includes('70%')));
   assert.ok(result.options.every((option) => !option.feasible));
 });
+
+test('measures the stable cap after late scheduled mortgage draws', () => {
+  const result = optimizeMortgage({
+    ...scenario,
+    stablePaymentCap: 1_000,
+    purchaseEvents: [
+      { month: 0, amount: 100_000 },
+      { month: 12, amount: 3_100_000 }
+    ],
+    saleEvents: [{ month: 1, amount: 2_250_000 }]
+  }, rates);
+  assert.ok(result.options.every((option) => option.stablePayment > 1_000));
+  assert.ok(result.options.every((option) => !option.feasible));
+});
+
+test('rejects bridge timelines longer than the available market-rate term', () => {
+  const result = optimizeMortgage({
+    ...scenario,
+    saleEvents: [{ month: 49, amount: 2_250_000 }]
+  }, rates);
+  assert.ok(result.envelope.fundingPlan.peakBridge > 0);
+  assert.ok(result.options.every((option) => !option.bridge.termSupported));
+  assert.ok(result.options.every((option) => !option.feasible));
+  assert.ok(result.warnings.some((warning) => warning.includes('תקופת הגישור')));
+});
+
+test('trims purchase schedule overages across multiple installments', () => {
+  const envelope = calculateEnvelope({
+    ...scenario,
+    propertyPrice: 1_000_000,
+    appraisalValue: 1_000_000,
+    purchaseTaxMode: 'manual',
+    manualPurchaseTax: 0,
+    brokerPercent: 0,
+    lawyerPercent: 0,
+    appraisalCost: 0,
+    mortgageOpeningFee: 0,
+    mortgageAdvisorCost: 0,
+    otherCosts: [],
+    purchaseEvents: [
+      { month: 0, amount: 1_500_000 },
+      { month: 2, amount: 100_000 }
+    ]
+  });
+  assert.equal(envelope.fundingPlan.scheduledPurchaseTotal, 1_600_000);
+  assert.equal(envelope.fundingPlan.adjustedPurchaseTotal, 1_000_000);
+  assert.equal(
+    envelope.fundingPlan.months.reduce((sum, month) => sum + month.outflow, 0),
+    1_000_000
+  );
+});

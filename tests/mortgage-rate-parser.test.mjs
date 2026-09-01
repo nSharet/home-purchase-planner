@@ -29,3 +29,10 @@ test('normalizes the external rate tables into the local data model', () => {
   const bridge = parsed.products.find((product) => product.id === 'bridge-unlinked');
   assert.deepEqual(bridge.terms[0].bands.all, { min: 4.5, max: 5.1 });
 });
+
+test('preserves the fetched timestamp when normalized rates did not change', () => {
+  const first = parseMotiHtml(html, previous);
+  first.meta.fetchedAt = '2026-09-01T10:00:00.000Z';
+  const second = parseMotiHtml(html, first);
+  assert.equal(second.meta.fetchedAt, first.meta.fetchedAt);
+});

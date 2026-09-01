@@ -146,10 +146,18 @@ function buildFundingPlan(input, envelope) {
 
   const scheduledPurchaseTotal = purchases.reduce((sum, event) => sum + event.amount, 0);
   const scheduleDifference = envelope.propertyPrice - scheduledPurchaseTotal;
-  if (Math.abs(scheduleDifference) >= 1) {
+  if (scheduleDifference >= 1) {
     const last = purchases[purchases.length - 1];
-    last.amount = Math.max(0, last.amount + scheduleDifference);
+    last.amount += scheduleDifference;
+  } else if (scheduleDifference <= -1) {
+    let excess = -scheduleDifference;
+    for (let index = purchases.length - 1; index >= 0 && excess > 0; index -= 1) {
+      const reduction = Math.min(excess, purchases[index].amount);
+      purchases[index].amount -= reduction;
+      excess -= reduction;
+    }
   }
+  const adjustedPurchases = purchases.filter((event) => event.amount > 0);
 
   const sales = normalizeEvents(input.saleEvents);
   const transitionEndMonth = sales.length ? sales[sales.length - 1].month : 0;
@@ -159,11 +167,11 @@ function buildFundingPlan(input, envelope) {
     saleByMonth.set(transitionEndMonth, (saleByMonth.get(transitionEndMonth) ?? 0) - payoff);
   }
 
-  const purchaseByMonth = sumByMonth(purchases);
+  const purchaseByMonth = sumByMonth(adjustedPurchases);
   purchaseByMonth.set(0, (purchaseByMonth.get(0) ?? 0) + envelope.purchaseCosts);
   const maxEventMonth = Math.max(
     transitionEndMonth,
-    ...purchases.map((event) => event.month),
+    ...adjustedPurchases.map((event) => event.month),
     0
   );
 
@@ -232,6 +240,7 @@ function buildFundingPlan(input, envelope) {
     });
   }
 
+  const bridgeStart = months.find((month) => month.existingBridgeDraw > 0 || month.newBridgeDraw > 0);
   return {
     months,
     longDraws,
@@ -242,6 +251,11 @@ function buildFundingPlan(input, envelope) {
     remainingBridge: existingBridgeBalance + newBridgeBalance,
     uncovered: months.reduce((max, month) => Math.max(max, month.uncovered), 0),
     scheduledPurchaseTotal,
+    adjustedPurchaseTotal: adjustedPurchases.reduce((sum, event) => sum + event.amount, 0),
+    bridgeStartMonth: bridgeStart?.month ?? null,
+    bridgeDurationYears: bridgeStart
+      ? Math.max(0, (transitionEndMonth - bridgeStart.month) / 12)
+      : 0,
     scheduleDifference
   };
 }
@@ -367,7 +381,19 @@ function simulateSubloan({ amount, startMonth, track, termYears, graceUntilMonth
 
 function simulateBridge(dataset, input, envelope, ratePosition) {
   const productId = input.bridgeIndexed ? 'bridge-linked' : 'bridge-unlinked';
-  const rate = getProductRate(dataset, productId, 2, envelope.pricingLtvPercent, ratePosition);
+  const product = dataset?.products?.find((item) => item.id === productId);
+  const requestedYears = envelope.fundingPlan.bridgeDurationYears;
+  const termSupported = envelope.fundingPlan.peakBridge <= 0 || Boolean(product?.terms?.some(
+    (term) => requestedYears >= number(term.minYears) && requestedYears <= number(term.maxYears)
+  ));
+  const fallbackYears = product?.terms?.[product.terms.length - 1]?.maxYears ?? requestedYears;
+  const rate = getProductRate(
+    dataset,
+    productId,
+    termSupported ? requestedYears : fallbackYears,
+    envelope.pricingLtvPercent,
+    ratePosition
+  );
   const rateMonthly = rate.working / 100 / 12;
   const inflationMonthly = input.bridgeIndexed
     ? (1 + number(input.annualInflation) / 100) ** (1 / 12) - 1
@@ -403,6 +429,8 @@ function simulateBridge(dataset, input, envelope, ratePosition) {
 
   return {
     rate,
+    requestedYears,
+    termSupported,
     payments,
     totalInterest,
     totalIndexation,
@@ -467,8 +495,11 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
     peakTransitionPayment = Math.max(peakTransitionPayment, current);
   }
 
-  const stableMonth = transitionEnd + 1;
-  const stablePayment = (paymentByMonth.get(stableMonth) ?? 0) + otherMonthlyLoans;
+  const finalPaymentMonth = Math.max(transitionEnd + 1, ...paymentByMonth.keys());
+  let stablePayment = otherMonthlyLoans;
+  for (let month = transitionEnd + 1; month <= finalPaymentMonth; month += 1) {
+    stablePayment = Math.max(stablePayment, (paymentByMonth.get(month) ?? 0) + otherMonthlyLoans);
+  }
   const incomeCap = Math.max(0, number(input.monthlyNetIncome) * 0.50);
   const requestedTransitionCap = number(input.transitionPaymentCap) || Infinity;
   const requestedStableCap = number(input.stablePaymentCap) || Infinity;
@@ -491,6 +522,7 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
   if (envelope.fundingPlan.uncovered > 1) violations.push('קיים פער מימון שאינו מכוסה');
   if (envelope.fundingPlan.remainingBridge > 1) violations.push('הגישור אינו נסגר לאחר תקבולי המכירה');
   if (bridge.endingBalance > 1) violations.push('הצמדה הותירה יתרת גישור לאחר המכירה');
+  if (!bridge.termSupported) violations.push('תקופת הגישור ארוכה מטווח הריבית הזמין');
   if (peakTransitionPayment > effectiveTransitionCap + 1) violations.push('החזר המעבר חורג מהתקרה');
   if (stablePayment > effectiveStableCap + 1) violations.push('ההחזר הקבוע חורג מהתקרה');
 
@@ -548,13 +580,16 @@ export function optimizeMortgage(input, dataset) {
   const warnings = [];
 
   if (envelope.fundingPlan.scheduleDifference !== 0) {
-    warnings.push('לוח תשלומי הרכישה אינו שווה למחיר הבית; ההפרש הושלם באירוע האחרון לצורך החישוב.');
+    warnings.push('לוח תשלומי הרכישה אינו שווה למחיר הבית; הוא הותאם אוטומטית למחיר לצורך החישוב.');
   }
   if (envelope.longTermNeed > envelope.newMortgageCapacity) {
     warnings.push('הצורך הקבוע לאחר המכירה גבוה מתקרת 70% המימון על הבית החדש.');
   }
   if (envelope.fundingPlan.uncovered > 0) {
     warnings.push('קיים פער מימון מעבר לקיבולת המשכנתה והגישור.');
+  }
+  if (options.some((option) => !option.bridge.termSupported)) {
+    warnings.push('תקופת הגישור חורגת מטווח התקופה הזמין במקור הריביות; החלופות מסומנות כלא ישימות.');
   }
   if (dataset?.meta?.sourceUpdatedAt) {
     const ageDays = (Date.now() - new Date(dataset.meta.sourceUpdatedAt).getTime()) / 86_400_000;
