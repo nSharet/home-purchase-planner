@@ -65,19 +65,60 @@
             <span class="status-pill">משפרי דיור · ישראל</span>
           </div>
 
-          <div class="section-title">הבית החדש</div>
-          <div class="form-grid">
-            <label class="field"><span>מחיר רכישה</span><div class="money-input"><input id="propertyPrice" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-            <label class="field"><span>שווי שמאי <small>ריק = מחיר הרכישה</small></span><div class="money-input"><input id="appraisalValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-            <label class="field"><span>עלויות עסקה, מעבר ושיפוץ</span><div class="money-input"><input id="purchaseCosts" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-          </div>
+          <div class="deal-layout">
+            <div>
+              <div class="section-title">הבית החדש</div>
+              <div class="form-grid compact-grid">
+                <label class="field"><span>מחיר רכישה</span><div class="money-input"><input id="propertyPrice" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>שווי שמאי <small>ריק = מחיר הרכישה</small></span><div class="money-input"><input id="appraisalValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
 
-          <div class="section-title">הבית הקיים</div>
-          <div class="form-grid">
-            <label class="field"><span>שווי צפוי במכירה</span><div class="money-input"><input id="existingPropertyValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-            <label class="field"><span>יתרת משכנתה קיימת</span><div class="money-input"><input id="existingMortgageBalance" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-            <label class="field"><span>החזר חודשי קיים</span><div class="money-input"><input id="existingMortgagePayment" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
-            <label class="field"><span>עמלת סילוק צפויה</span><div class="money-input"><input id="existingMortgagePayoffFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              <div class="section-title">הבית הקיים</div>
+              <div class="form-grid compact-grid">
+                <label class="field"><span>שווי צפוי במכירה</span><div class="money-input"><input id="existingPropertyValue" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>יתרת משכנתה קיימת</span><div class="money-input"><input id="existingMortgageBalance" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>החזר חודשי קיים</span><div class="money-input"><input id="existingMortgagePayment" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>עמלת סילוק צפויה</span><div class="money-input"><input id="existingMortgagePayoffFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
+            </div>
+
+            <aside class="cost-panel" aria-labelledby="costPanelTitle">
+              <div class="cost-panel-head">
+                <div><span class="check-mark">✓</span><h3 id="costPanelTitle">עלויות נלוות לרכישה</h3></div>
+                <strong id="acquisitionCostTotal">—</strong>
+              </div>
+              <p>אומדן שמתעדכן לפי מחיר הבית. כל הסכומים ניתנים לעריכה.</p>
+
+              <div class="cost-control tax-control">
+                <label><span>מס רכישה משוער</span><select id="purchaseTaxMode"><option value="auto">חישוב אוטומטי</option><option value="manual">סכום ידני</option></select></label>
+                <strong id="purchaseTaxValue">—</strong>
+              </div>
+              <label class="field manual-tax" id="manualPurchaseTaxField"><span>מס רכישה ידני</span><div class="money-input"><input id="manualPurchaseTax" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+
+              <div class="cost-percent-row">
+                <label class="field"><span>תיווך</span><div class="suffix-input"><input id="brokerPercent" type="number" min="0" max="10" step="0.1" /><b>%</b></div></label>
+                <label class="mini-check"><input id="brokerVat" type="checkbox" /> כולל מע״מ</label>
+                <strong id="brokerageValue">—</strong>
+              </div>
+              <div class="cost-percent-row">
+                <label class="field"><span>עורך דין</span><div class="suffix-input"><input id="lawyerPercent" type="number" min="0" max="10" step="0.1" /><b>%</b></div></label>
+                <label class="mini-check"><input id="lawyerVat" type="checkbox" /> כולל מע״מ</label>
+                <strong id="lawyerValue">—</strong>
+              </div>
+              <label class="field vat-field"><span>שיעור מע״מ לחישוב</span><div class="suffix-input"><input id="vatRate" type="number" min="0" max="30" step="0.1" /><b>%</b></div></label>
+
+              <div class="cost-fixed-grid">
+                <label class="field"><span>שמאות</span><div class="money-input"><input id="appraisalCost" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>פתיחת תיק משכנתה</span><div class="money-input"><input id="mortgageOpeningFee" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+                <label class="field"><span>ייעוץ משכנתה</span><div class="money-input"><input id="mortgageAdvisorCost" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
+              </div>
+
+              <div class="subhead-row additional-head"><h4>עלויות נוספות</h4><button class="text-btn no-print" id="addOtherCost" type="button">+ הוספה</button></div>
+              <div class="other-cost-list" id="otherCosts"></div>
+
+              <div class="cost-notice"><b>חשוב:</b> העלויות נכללות בעלות הפרויקט ובצורך התזרימי, אך אינן מגדילות את שווי הנכס או את תקרת המימון של 70%.</div>
+              <small class="tax-disclaimer">מס הרכישה מחושב כאומדן לפי מדרגות דירה יחידה, בכפוף לעמידת משפר הדיור בתנאי החוק ובמועד מכירת הדירה הקיימת. יש לאמת מול <a href="https://www.gov.il/he/service/real_eatate_taxsimulator" target="_blank" rel="noopener">סימולטור רשות המסים</a>.</small>
+            </aside>
           </div>
         </section>
 
@@ -172,6 +213,14 @@
       <label><span>מועד</span><div class="month-input"><b>T +</b><input class="event-month" type="number" min="0" step="1" /><em>חודשים</em></div></label>
       <label><span>סכום</span><div class="money-input"><input class="event-amount" data-money type="text" inputmode="numeric" /><b>₪</b></div></label>
       <button class="icon-btn remove-event no-print" type="button" aria-label="מחיקת אירוע">×</button>
+    </div>
+  </template>
+
+  <template id="otherCostTemplate">
+    <div class="other-cost-row">
+      <input class="other-cost-label" type="text" aria-label="תיאור עלות נוספת" placeholder="תיאור העלות" />
+      <div class="money-input"><input class="other-cost-amount" type="text" inputmode="numeric" aria-label="סכום עלות נוספת" /><b>₪</b></div>
+      <button class="icon-btn remove-other-cost no-print" type="button" aria-label="מחיקת עלות">×</button>
     </div>
   </template>
 

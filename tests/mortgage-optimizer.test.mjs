@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  calculateAcquisitionCosts,
   calculateEnvelope,
   getProductRate,
   optimizeMortgage,
@@ -15,7 +16,17 @@ const rates = JSON.parse(
 const scenario = {
   propertyPrice: 3_200_000,
   appraisalValue: 3_200_000,
-  purchaseCosts: 292_858,
+  purchaseTaxMode: 'auto',
+  manualPurchaseTax: 0,
+  brokerPercent: 1.5,
+  brokerVat: true,
+  lawyerPercent: 0.5,
+  lawyerVat: true,
+  vatRate: 18,
+  appraisalCost: 2_000,
+  mortgageOpeningFee: 360,
+  mortgageAdvisorCost: 11_800,
+  otherCosts: [{ label: 'מעבר, התאמות וריהוט', amount: 150_000, enabled: true }],
   existingPropertyValue: 2_250_000,
   existingMortgageBalance: 490_000,
   existingMortgagePayment: 4_700,
@@ -56,13 +67,32 @@ test('calculates the replacement-buyer financing envelope', () => {
   assert.equal(envelope.newMortgageCapacity, 2_240_000);
   assert.equal(envelope.existingBridgeCapacity, 635_000);
   assert.equal(envelope.saleNet, 1_760_000);
-  assert.equal(envelope.longTermNeed, 1_332_858);
+  assert.ok(Math.abs(envelope.longTermNeed - 1_335_218.325) < 0.001);
   assert.equal(envelope.fundingPlan.transitionEndMonth, 18);
   assert.equal(envelope.fundingPlan.peakExistingBridge, 635_000);
-  assert.equal(envelope.fundingPlan.peakNewBridge, 675_000);
+  assert.ok(Math.abs(envelope.fundingPlan.peakNewBridge - 675_000) < 0.001);
   assert.ok(envelope.pricingLtvPercent > 60 && envelope.pricingLtvPercent < 70);
   assert.equal(envelope.fundingPlan.uncovered, 0);
   assert.equal(envelope.fundingPlan.remainingBridge, 0);
+});
+
+test('itemizes acquisition costs without expanding the regulatory LTV base', () => {
+  const costs = calculateAcquisitionCosts(scenario);
+  assert.ok(Math.abs(costs.purchaseTax - 55_538.325) < 0.001);
+  assert.equal(costs.brokerage, 56_640);
+  assert.equal(costs.lawyer, 18_880);
+  assert.equal(costs.mortgageOpening, 360);
+  assert.ok(Math.abs(costs.total - 295_218.325) < 0.001);
+
+  const baseline = calculateEnvelope(scenario);
+  const withMoreCosts = calculateEnvelope({
+    ...scenario,
+    otherCosts: [{ label: 'תוספת', amount: 250_000, enabled: true }]
+  });
+  assert.equal(withMoreCosts.newMortgageCapacity, baseline.newMortgageCapacity);
+  assert.equal(withMoreCosts.ltvBase, baseline.ltvBase);
+  assert.equal(withMoreCosts.projectTotal - baseline.projectTotal, 100_000);
+  assert.equal(withMoreCosts.longTermNeed - baseline.longTermNeed, 100_000);
 });
 
 test('returns balanced, stable and flexible feasible options', () => {

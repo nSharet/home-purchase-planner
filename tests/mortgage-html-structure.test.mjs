@@ -12,10 +12,22 @@ test('mortgage optimizer keeps the core product flow visible', () => {
     'ציר תשלומים יחסי',
     'הנחות האופטימיזציה',
     'שלוש חלופות',
-    'רענון ריביות'
+    'רענון ריביות',
+    'עלויות נלוות לרכישה',
+    'מס רכישה משוער',
+    'תיווך',
+    'עורך דין',
+    'פתיחת תיק משכנתה'
   ]) {
     assert.ok(html.includes(required), `missing: ${required}`);
   }
+});
+
+test('mortgage optimizer supports automatic and user-defined acquisition costs', () => {
+  assert.match(html, /id="purchaseTaxMode"/);
+  assert.match(html, /id="otherCosts"/);
+  assert.match(html, /id="otherCostTemplate"/);
+  assert.ok(html.includes('אינן מגדילות את שווי הנכס או את תקרת המימון של 70%'));
 });
 
 test('mortgage optimizer exposes separate purchase and sale event collections', () => {

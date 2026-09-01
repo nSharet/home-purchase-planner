@@ -1,4 +1,4 @@
-import { getProductRate, optimizeMortgage } from './optimizer.js';
+import { calculateAcquisitionCosts, getProductRate, optimizeMortgage } from './optimizer.js';
 
 const STORAGE_KEY = 'home-purchase-planner:mortgage-optimizer:v1';
 const RATE_URL = './data/rates/current.json';
@@ -6,7 +6,19 @@ const RATE_URL = './data/rates/current.json';
 const DEFAULT_STATE = {
   propertyPrice: 3_200_000,
   appraisalValue: 3_200_000,
-  purchaseCosts: 292_858,
+  purchaseTaxMode: 'auto',
+  manualPurchaseTax: 0,
+  brokerPercent: 1.5,
+  brokerVat: true,
+  lawyerPercent: 0.5,
+  lawyerVat: true,
+  vatRate: 18,
+  appraisalCost: 2_000,
+  mortgageOpeningFee: 360,
+  mortgageAdvisorCost: 11_800,
+  otherCosts: [
+    { label: 'מעבר, התאמות וריהוט', amount: 150_000, enabled: true }
+  ],
   existingPropertyValue: 2_250_000,
   existingMortgageBalance: 490_000,
   existingMortgagePayment: 4_700,
@@ -39,13 +51,16 @@ const DEFAULT_STATE = {
 };
 
 const MONEY_IDS = [
-  'propertyPrice', 'appraisalValue', 'purchaseCosts', 'existingPropertyValue',
+  'propertyPrice', 'appraisalValue', 'manualPurchaseTax', 'appraisalCost',
+  'mortgageOpeningFee', 'mortgageAdvisorCost', 'existingPropertyValue',
   'existingMortgageBalance', 'existingMortgagePayment', 'existingMortgagePayoffFee',
   'liquidEquity', 'cashReserve', 'monthlyNetIncome', 'otherMonthlyLoans',
   'transitionPaymentCap', 'stablePaymentCap', 'financingFees', 'estimatedEarlyRepaymentFee'
 ];
-const NUMBER_IDS = ['termYears', 'annualInflation', 'primeScenarioDelta'];
-const CHECKBOX_IDS = ['allowIndexed', 'bridgeIndexed'];
+const NUMBER_IDS = [
+  'brokerPercent', 'lawyerPercent', 'vatRate', 'termYears', 'annualInflation', 'primeScenarioDelta'
+];
+const CHECKBOX_IDS = ['brokerVat', 'lawyerVat', 'allowIndexed', 'bridgeIndexed'];
 
 let state = loadState();
 let rates = null;
@@ -91,10 +106,13 @@ function hydrateInputs() {
   for (const id of MONEY_IDS) document.getElementById(id).value = formatInputMoney(state[id]);
   for (const id of NUMBER_IDS) document.getElementById(id).value = state[id];
   for (const id of CHECKBOX_IDS) document.getElementById(id).checked = Boolean(state[id]);
+  document.getElementById('purchaseTaxMode').value = state.purchaseTaxMode;
   document.getElementById('ratePosition').value = Math.round(state.ratePosition * 100);
   document.getElementById('ratePositionValue').textContent = `${Math.round(state.ratePosition * 100)}%`;
   renderEvents('purchase');
   renderEvents('sale');
+  renderOtherCosts();
+  renderAcquisitionCosts(calculateAcquisitionCosts(state));
 }
 
 function bindInputs() {
@@ -125,6 +143,11 @@ function bindInputs() {
     });
   }
 
+  document.getElementById('purchaseTaxMode').addEventListener('change', (event) => {
+    state.purchaseTaxMode = event.target.value;
+    changed();
+  });
+
   document.getElementById('ratePosition').addEventListener('input', (event) => {
     state.ratePosition = Number(event.target.value) / 100;
     document.getElementById('ratePositionValue').textContent = `${event.target.value}%`;
@@ -134,6 +157,7 @@ function bindInputs() {
 
   document.getElementById('addPurchaseEvent').addEventListener('click', () => addEvent('purchase'));
   document.getElementById('addSaleEvent').addEventListener('click', () => addEvent('sale'));
+  document.getElementById('addOtherCost').addEventListener('click', addOtherCost);
   document.getElementById('refreshRatesBtn').addEventListener('click', () => loadRates(true));
   document.getElementById('optimizeBtn').addEventListener('click', run);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
@@ -197,8 +221,58 @@ function renderEvents(type) {
   document.getElementById(`${type}Total`).textContent = money(total);
 }
 
+function addOtherCost() {
+  state.otherCosts.push({ label: '', amount: 0, enabled: true });
+  renderOtherCosts();
+  changed();
+}
+
+function renderOtherCosts() {
+  const container = document.getElementById('otherCosts');
+  const template = document.getElementById('otherCostTemplate');
+  if (!Array.isArray(state.otherCosts)) state.otherCosts = [];
+  container.replaceChildren();
+
+  state.otherCosts.forEach((item, index) => {
+    const fragment = template.content.cloneNode(true);
+    const labelInput = fragment.querySelector('.other-cost-label');
+    const amountInput = fragment.querySelector('.other-cost-amount');
+    labelInput.value = item.label ?? '';
+    amountInput.value = formatInputMoney(item.amount);
+    labelInput.addEventListener('change', () => {
+      state.otherCosts[index].label = labelInput.value.trim();
+      changed();
+    });
+    amountInput.addEventListener('focus', () => { amountInput.value = state.otherCosts[index].amount || ''; });
+    amountInput.addEventListener('blur', () => {
+      state.otherCosts[index].amount = Math.max(0, parseMoney(amountInput.value));
+      amountInput.value = formatInputMoney(state.otherCosts[index].amount);
+      changed();
+    });
+    amountInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') amountInput.blur();
+    });
+    fragment.querySelector('.remove-other-cost').addEventListener('click', () => {
+      state.otherCosts.splice(index, 1);
+      renderOtherCosts();
+      changed();
+    });
+    container.append(fragment);
+  });
+}
+
+function renderAcquisitionCosts(costs) {
+  document.getElementById('acquisitionCostTotal').textContent = money(costs.total);
+  document.getElementById('purchaseTaxValue').textContent = money(costs.purchaseTax);
+  document.getElementById('brokerageValue').textContent = money(costs.brokerage);
+  document.getElementById('lawyerValue').textContent = money(costs.lawyer);
+  const manual = state.purchaseTaxMode === 'manual';
+  document.getElementById('manualPurchaseTaxField').hidden = !manual;
+}
+
 function changed(runImmediately = true) {
   saveState();
+  renderAcquisitionCosts(calculateAcquisitionCosts(state));
   if (runImmediately) run();
 }
 
@@ -242,6 +316,7 @@ function renderRatesPreview() {
 
 function renderEnvelope(result) {
   const { envelope } = result;
+  renderAcquisitionCosts(envelope.acquisitionCosts);
   document.getElementById('kpiNewCapacity').textContent = money(envelope.newMortgageCapacity);
   document.getElementById('kpiExistingBridge').textContent = money(envelope.existingBridgeCapacity);
   document.getElementById('kpiLongNeed').textContent = money(envelope.longTermNeed);

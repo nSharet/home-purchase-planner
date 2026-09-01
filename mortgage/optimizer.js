@@ -1,3 +1,5 @@
+import { calculatePurchaseTax } from '../src/calculator.js';
+
 const PROFILE_DEFINITIONS = {
   balanced: {
     label: 'מאוזנת',
@@ -85,6 +87,44 @@ export function annuityPayment(principal, annualRatePercent, months) {
   const monthlyRate = number(annualRatePercent) / 100 / 12;
   if (!monthlyRate) return amount / count;
   return amount * monthlyRate / (1 - (1 + monthlyRate) ** -count);
+}
+
+export function calculateAcquisitionCosts(input) {
+  const propertyPrice = Math.max(0, number(input.propertyPrice));
+  const vatMultiplier = 1 + Math.max(0, number(input.vatRate)) / 100;
+  const automaticPurchaseTax = calculatePurchaseTax(propertyPrice, 'single');
+  const purchaseTax = input.purchaseTaxMode === 'manual'
+    ? Math.max(0, number(input.manualPurchaseTax))
+    : automaticPurchaseTax;
+  const brokerage = propertyPrice * Math.max(0, number(input.brokerPercent)) / 100
+    * (input.brokerVat ? vatMultiplier : 1);
+  const lawyer = propertyPrice * Math.max(0, number(input.lawyerPercent)) / 100
+    * (input.lawyerVat ? vatMultiplier : 1);
+  const appraisal = Math.max(0, number(input.appraisalCost));
+  const mortgageOpening = Math.max(0, number(input.mortgageOpeningFee));
+  const mortgageAdvisor = Math.max(0, number(input.mortgageAdvisorCost));
+  const additional = (Array.isArray(input.otherCosts) ? input.otherCosts : [])
+    .filter((item) => item.enabled !== false)
+    .reduce((sum, item) => sum + Math.max(0, number(item.amount)), 0);
+  const structuredTotal = purchaseTax + brokerage + lawyer + appraisal
+    + mortgageOpening + mortgageAdvisor + additional;
+  const hasStructuredCosts = [
+    'purchaseTaxMode', 'brokerPercent', 'lawyerPercent', 'appraisalCost',
+    'mortgageOpeningFee', 'mortgageAdvisorCost', 'otherCosts'
+  ].some((key) => Object.hasOwn(input, key));
+  const total = hasStructuredCosts ? structuredTotal : Math.max(0, number(input.purchaseCosts));
+
+  return {
+    automaticPurchaseTax,
+    purchaseTax,
+    brokerage,
+    lawyer,
+    appraisal,
+    mortgageOpening,
+    mortgageAdvisor,
+    additional,
+    total
+  };
 }
 
 function normalizeEvents(events) {
@@ -211,7 +251,8 @@ export function calculateEnvelope(input) {
   const appraisalValue = number(input.appraisalValue) > 0 ? number(input.appraisalValue) : propertyPrice;
   const ltvBase = Math.max(0, Math.min(propertyPrice, appraisalValue));
   const newMortgageCapacity = ltvBase * 0.70;
-  const purchaseCosts = Math.max(0, number(input.purchaseCosts));
+  const acquisitionCosts = calculateAcquisitionCosts(input);
+  const purchaseCosts = acquisitionCosts.total;
   const existingPropertyValue = Math.max(0, number(input.existingPropertyValue));
   const existingMortgageBalance = Math.max(0, number(input.existingMortgageBalance));
   const existingMortgagePayoffFee = Math.max(0, number(input.existingMortgagePayoffFee));
@@ -229,6 +270,7 @@ export function calculateEnvelope(input) {
     appraisalValue,
     ltvBase,
     purchaseCosts,
+    acquisitionCosts,
     projectTotal,
     newMortgageCapacity,
     existingPropertyValue,
