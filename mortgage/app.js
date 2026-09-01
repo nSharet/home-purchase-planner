@@ -182,6 +182,12 @@ function addEvent(type) {
   changed();
 }
 
+function renderEventTotal(type) {
+  const key = eventKey(type);
+  const total = state[key].reduce((sum, event) => sum + Number(event.amount || 0), 0);
+  document.getElementById(`${type}Total`).textContent = money(total);
+}
+
 function renderEvents(type) {
   const key = eventKey(type);
   const container = document.getElementById(`${type}Events`);
@@ -206,7 +212,11 @@ function renderEvents(type) {
     amountInput.addEventListener('blur', () => {
       state[key][index].amount = Math.max(0, parseMoney(amountInput.value));
       amountInput.value = formatInputMoney(state[key][index].amount);
+      renderEventTotal(type);
       changed();
+    });
+    amountInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') amountInput.blur();
     });
     fragment.querySelector('.remove-event').addEventListener('click', () => {
       state[key].splice(index, 1);
@@ -217,8 +227,7 @@ function renderEvents(type) {
     container.append(fragment);
   });
 
-  const total = state[key].reduce((sum, event) => sum + Number(event.amount || 0), 0);
-  document.getElementById(`${type}Total`).textContent = money(total);
+  renderEventTotal(type);
 }
 
 function addOtherCost() {
