@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import {
   calculateAcquisitionCosts,
   calculateEnvelope,
+  calculateNewPropertyFinancing,
   getProductRate,
   optimizeMortgage,
   workingRate
@@ -101,6 +102,12 @@ test('returns balanced, stable and flexible feasible options', () => {
   for (const option of result.options) {
     assert.equal(option.feasible, true);
     assert.ok(option.variableShare <= 2 / 3 + 0.0001);
+    assert.equal(
+      option.newPropertyFinancing.total,
+      result.envelope.longTermNeed + result.envelope.fundingPlan.peakNewBridge
+    );
+    assert.equal(option.bridgeComponents.existing.amount, result.envelope.fundingPlan.peakExistingBridge);
+    assert.equal(option.bridgeComponents.newProperty.amount, result.envelope.fundingPlan.peakNewBridge);
     assert.ok(option.peakTransitionPayment <= scenario.transitionPaymentCap);
     assert.ok(option.stablePayment <= scenario.stablePaymentCap);
     assert.ok(option.totalCost > 0);
@@ -111,11 +118,44 @@ test('returns balanced, stable and flexible feasible options', () => {
   );
 });
 
+test('checks the variable-rate limit across the long mortgage and new-property bridge only', () => {
+  const envelope = calculateEnvelope(scenario);
+  const allPrime = [{ share: 1, variable: true }];
+  const variableBridge = calculateNewPropertyFinancing(allPrime, envelope, { variable: true });
+  assert.equal(variableBridge.variableAmount, variableBridge.total);
+  assert.equal(variableBridge.compliant, false);
+
+  const fixedBridge = calculateNewPropertyFinancing(
+    [{ share: 0.5, variable: true }, { share: 0.5, variable: false }],
+    envelope,
+    { variable: false }
+  );
+  assert.equal(fixedBridge.compliant, true);
+  assert.equal(fixedBridge.total, envelope.longTermNeed + envelope.fundingPlan.peakNewBridge);
+  assert.ok(fixedBridge.total < fixedBridge.total + envelope.fundingPlan.peakExistingBridge);
+});
+
+test('respects requests to avoid full grace and full bridge balloon', () => {
+  const result = optimizeMortgage({
+    ...scenario,
+    avoidFullGrace: true,
+    avoidFullBalloon: true,
+    transitionPaymentCap: 7_000
+  }, rates);
+  assert.ok(result.options.every((option) => option.graceStrategy.full.length === 0));
+  assert.ok(result.options.every((option) => option.bridge.paymentMode === 'partial'));
+  assert.ok(result.options.some((option) => !option.feasible && option.transitionOverage > 0));
+});
+
 test('uses full grace only when it is needed to satisfy the transition cap', () => {
-  const constrained = optimizeMortgage(scenario, rates);
+  const constrained = optimizeMortgage({ ...scenario, avoidFullBalloon: true }, rates);
   assert.ok(constrained.options.some((option) => option.graceStrategy.full.length > 0));
 
-  const relaxed = optimizeMortgage({ ...scenario, transitionPaymentCap: 25_000 }, rates);
+  const relaxed = optimizeMortgage({
+    ...scenario,
+    avoidFullBalloon: true,
+    transitionPaymentCap: 25_000
+  }, rates);
   assert.ok(relaxed.options.every((option) => option.graceStrategy.full.length === 0));
 });
 

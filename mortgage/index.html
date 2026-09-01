@@ -175,13 +175,16 @@
           <div class="toggle-grid">
             <label class="toggle"><input id="allowIndexed" type="checkbox" /><span></span><b>לאפשר מסלולים צמודי מדד</b></label>
             <label class="toggle"><input id="bridgeIndexed" type="checkbox" /><span></span><b>לאפשר גישור צמוד מדד</b></label>
+            <label class="toggle"><input id="avoidFullGrace" type="checkbox" /><span></span><b>להימנע מגרייס מלא</b></label>
+            <label class="toggle"><input id="avoidFullBalloon" type="checkbox" /><span></span><b>להימנע מבלון מלא בגישור</b></label>
           </div>
+          <div class="inline-note">כאשר הימנעות מגרייס או מבלון מלא אינה מאפשרת לעמוד בתקרת ההחזר, תוצג החלופה הטובה ביותר עם סימון אדום ופירוט החריגה.</div>
           <div class="rates-preview" id="ratesPreview"></div>
         </section>
 
         <section id="results">
           <div class="results-head">
-            <div><span class="step">05</span><h2>שלוש חלופות</h2><p>בכל פרופיל נבחר הפתרון הזול ביותר שעומד באילוצים שלו.</p></div>
+            <div><span class="step">05</span><h2>שלוש חלופות</h2><p>בכל פרופיל נבחר הפתרון הזול ביותר שעומד באילוצים שלו. בדיקת שני השלישים מחושבת באופן שמרני על המשכנתה והגישור המשועבדים לבית החדש; האישור בפועל כפוף למבנה שיאשר הבנק.</p></div>
             <button class="btn primary no-print" id="optimizeBtn" type="button">חשב מחדש</button>
           </div>
           <div class="warnings" id="warnings" role="status"></div>
