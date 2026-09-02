@@ -256,6 +256,7 @@ function buildFundingPlan(input, envelope) {
     bridgeDurationYears: bridgeStart
       ? Math.max(0, (transitionEndMonth - bridgeStart.month) / 12)
       : 0,
+    endingCash: Math.max(0, cash),
     scheduleDifference
   };
 }
@@ -434,6 +435,11 @@ function simulateBridge(dataset, input, envelope, ratePosition, paymentMode = 'p
     }
   }
 
+  const balloonInterestPayoff = paymentMode === 'full'
+    ? Math.min(accruedInterest, envelope.fundingPlan.endingCash)
+    : 0;
+  const unpaidBalloonInterest = Math.max(0, accruedInterest - balloonInterestPayoff);
+
   return {
     productId,
     label: product?.label ?? (input.bridgeIndexed ? 'גישור צמוד' : 'גישור לא־צמוד'),
@@ -447,7 +453,10 @@ function simulateBridge(dataset, input, envelope, ratePosition, paymentMode = 'p
     totalInterest,
     totalIndexation,
     totalCost: totalInterest + totalIndexation,
-    endingBalance: existingBalance + newBalance
+    accruedInterest,
+    balloonInterestPayoff,
+    unpaidBalloonInterest,
+    endingBalance: existingBalance + newBalance + unpaidBalloonInterest
   };
 }
 
@@ -558,7 +567,7 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
   if (envelope.longTermNeed > envelope.newMortgageCapacity + 1) violations.push('המשכנתה הארוכה חורגת מתקרת 70%');
   if (envelope.fundingPlan.uncovered > 1) violations.push('קיים פער מימון שאינו מכוסה');
   if (envelope.fundingPlan.remainingBridge > 1) violations.push('הגישור אינו נסגר לאחר תקבולי המכירה');
-  if (bridge.endingBalance > 1) violations.push('הצמדה הותירה יתרת גישור לאחר המכירה');
+  if (bridge.endingBalance > 1) violations.push('נותרה יתרת גישור או ריבית בלון ללא מקור סילוק');
   if (!bridge.termSupported) violations.push('תקופת הגישור ארוכה מטווח הריבית הזמין');
   if (peakTransitionPayment > effectiveTransitionCap + 1) violations.push('החזר המעבר חורג מהתקרה');
   if (stablePayment > effectiveStableCap + 1) violations.push('ההחזר הקבוע חורג מהתקרה');

@@ -147,6 +147,23 @@ test('respects requests to avoid full grace and full bridge balloon', () => {
   assert.ok(result.options.some((option) => !option.feasible && option.transitionOverage > 0));
 });
 
+test('never marks a full-balloon option feasible with unpaid accrued interest', () => {
+  const result = optimizeMortgage({
+    ...scenario,
+    avoidFullGrace: true,
+    avoidFullBalloon: false,
+    transitionPaymentCap: 5_000
+  }, rates);
+  for (const option of result.options.filter((candidate) => candidate.bridge.paymentMode === 'full')) {
+    assert.ok(option.bridge.accruedInterest > 0);
+    assert.equal(option.bridge.endingBalance, option.bridge.unpaidBalloonInterest);
+    if (option.bridge.unpaidBalloonInterest > 1) {
+      assert.equal(option.feasible, false);
+      assert.ok(option.violations.some((violation) => violation.includes('ריבית בלון')));
+    }
+  }
+});
+
 test('uses full grace only when it is needed to satisfy the transition cap', () => {
   const constrained = optimizeMortgage({ ...scenario, avoidFullBalloon: true }, rates);
   assert.ok(constrained.options.some((option) => option.graceStrategy.full.length > 0));
