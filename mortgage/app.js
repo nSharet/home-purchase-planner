@@ -37,6 +37,8 @@ const DEFAULT_STATE = {
   estimatedEarlyRepaymentFee: 0,
   allowIndexed: false,
   bridgeIndexed: false,
+  avoidFullGrace: true,
+  avoidFullBalloon: true,
   purchaseEvents: [
     { month: 0, amount: 320_000 },
     { month: 2, amount: 480_000 },
@@ -60,7 +62,9 @@ const MONEY_IDS = [
 const NUMBER_IDS = [
   'brokerPercent', 'lawyerPercent', 'vatRate', 'termYears', 'annualInflation', 'primeScenarioDelta'
 ];
-const CHECKBOX_IDS = ['brokerVat', 'lawyerVat', 'allowIndexed', 'bridgeIndexed'];
+const CHECKBOX_IDS = [
+  'brokerVat', 'lawyerVat', 'allowIndexed', 'bridgeIndexed', 'avoidFullGrace', 'avoidFullBalloon'
+];
 
 let state = loadState();
 let rates = null;
@@ -349,11 +353,11 @@ function renderEnvelope(result) {
 }
 
 function optionHtml(option) {
-  const status = option.feasible ? 'עומדת באילוצים' : 'דורשת התאמה';
+  const status = option.feasible ? 'עומדת באילוצים' : 'האופטימום הזמין · חורג';
   const tracks = option.tracks.map((track) => `
     <div class="mix-row">
       <div>${track.label} <small>· ${track.scenarioRate.toFixed(2)}%</small><div class="mix-bar"><i style="width:${track.share * 100}%"></i></div></div>
-      <strong>${Math.round(track.share * 100)}%</strong>
+      <strong>${money(option.newPropertyFinancing.longTermAmount * track.share)} · ${Math.round(track.share * 100)}%</strong>
     </div>`).join('');
   const partialGrace = option.tracks
     .filter((track) => option.graceStrategy.partial.includes(track.trackId))
@@ -365,6 +369,23 @@ function optionHtml(option) {
   if (partialGrace.length) graceParts.push(`חלקי: ${partialGrace.join(', ')}`);
   if (fullGrace.length) graceParts.push(`מלא: ${fullGrace.join(', ')}`);
   const grace = graceParts.join(' · ') || 'ללא גרייס במשכנתה הארוכה';
+  const bridgeMode = option.bridge.paymentMode === 'full'
+    ? 'בלון מלא — ללא תשלום שוטף'
+    : 'גישור חלקי — תשלום ריבית שוטף';
+  const bridgeComponentHtml = (title, component) => `
+    <div class="financing-component">
+      <div class="component-head"><span>${title}</span><strong>${money(component.amount)}</strong></div>
+      <small>${component.label} · ${component.variable ? 'ריבית משתנה' : 'ריבית קבועה'} · ${component.rate.toFixed(2)}% · ${bridgeMode}</small>
+    </div>`;
+  const regulation = option.newPropertyFinancing;
+  const regulationStatus = regulation.compliant ? 'תקין' : 'חורג';
+  const overages = [];
+  if (option.transitionOverage > 1) {
+    overages.push(`תקופת מעבר: ${money(option.peakTransitionPayment)} מול תקרה ${money(option.effectiveTransitionCap)}`);
+  }
+  if (option.stableOverage > 1) {
+    overages.push(`לאחר התייצבות: ${money(option.stablePayment)} מול תקרה ${money(option.effectiveStableCap)}`);
+  }
   const violations = option.violations.length
     ? `<ul class="violations">${option.violations.map((item) => `<li>${item}</li>`).join('')}</ul>`
     : '';
@@ -380,8 +401,20 @@ function optionHtml(option) {
         <div class="metric"><span>ריבית + גישור</span><strong>${money(option.totalInterest)}</strong></div>
         <div class="metric"><span>הצמדה חזויה</span><strong>${money(option.totalIndexation)}</strong></div>
       </div>
-      <div class="mix-list">${tracks}</div>
-      <div class="grace-note"><strong>גרייס:</strong> ${grace}</div>
+      <div class="financing-breakdown">
+        <div class="financing-component long-term-component">
+          <div class="component-head"><span>משכנתה ארוכת טווח על החדש</span><strong>${money(regulation.longTermAmount)}</strong></div>
+          <div class="mix-list">${tracks}</div>
+          <div class="grace-note"><strong>גרייס:</strong> ${grace}</div>
+        </div>
+        ${bridgeComponentHtml('גישור על הנכס הקיים', option.bridgeComponents.existing)}
+        ${bridgeComponentHtml('גישור על הנכס החדש', option.bridgeComponents.newProperty)}
+        <div class="regulation-check ${regulation.compliant ? 'is-valid' : 'is-invalid'}">
+          <div><span>בדיקת מימון על הבית החדש</span><b>${regulationStatus}</b></div>
+          <small>סה״כ ${money(regulation.total)} · קבוע ${money(regulation.fixedAmount)} (${Math.round(regulation.fixedShare * 100)}%) · משתנה ${money(regulation.variableAmount)} (${Math.round(regulation.variableShare * 100)}%)</small>
+        </div>
+      </div>
+      ${overages.length ? `<div class="cap-overage"><strong>חריגה מהתקרה:</strong> ${overages.join(' · ')}</div>` : ''}
       ${violations}
     </article>`;
 }

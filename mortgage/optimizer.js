@@ -256,6 +256,7 @@ function buildFundingPlan(input, envelope) {
     bridgeDurationYears: bridgeStart
       ? Math.max(0, (transitionEndMonth - bridgeStart.month) / 12)
       : 0,
+    endingCash: Math.max(0, cash),
     scheduleDifference
   };
 }
@@ -315,7 +316,7 @@ function trackRatesForMix(dataset, mix, termYears, ltvPercent, ratePosition, pri
   });
 }
 
-function graceVariants(tracks) {
+function graceVariants(tracks, avoidFullGrace = false) {
   const ids = tracks.map((track) => track.trackId);
   const variable = tracks.filter((track) => track.variable).map((track) => track.trackId);
   const variants = [
@@ -330,6 +331,7 @@ function graceVariants(tracks) {
   variants.push({ partial: ids, full: [] });
   variants.push({ partial: [], full: ids });
   return variants.filter((variant, index, all) => {
+    if (avoidFullGrace && variant.full.length) return false;
     const key = `p:${[...variant.partial].sort().join('|')};f:${[...variant.full].sort().join('|')}`;
     return all.findIndex((candidate) =>
       `p:${[...candidate.partial].sort().join('|')};f:${[...candidate.full].sort().join('|')}` === key
@@ -379,7 +381,7 @@ function simulateSubloan({ amount, startMonth, track, termYears, graceUntilMonth
   return { payments, totalPayments, totalInterest, totalIndexation, endingBalance: balance };
 }
 
-function simulateBridge(dataset, input, envelope, ratePosition) {
+function simulateBridge(dataset, input, envelope, ratePosition, paymentMode = 'partial') {
   const productId = input.bridgeIndexed ? 'bridge-linked' : 'bridge-unlinked';
   const product = dataset?.products?.find((item) => item.id === productId);
   const requestedYears = envelope.fundingPlan.bridgeDurationYears;
@@ -402,6 +404,7 @@ function simulateBridge(dataset, input, envelope, ratePosition) {
   let newBalance = 0;
   let totalInterest = 0;
   let totalIndexation = 0;
+  let accruedInterest = 0;
   const payments = new Map();
 
   for (const month of envelope.fundingPlan.months) {
@@ -422,12 +425,27 @@ function simulateBridge(dataset, input, envelope, ratePosition) {
       totalIndexation += indexation;
     }
 
-    const interest = (existingBalance + newBalance) * rateMonthly;
+    const interest = (existingBalance + newBalance + accruedInterest) * rateMonthly;
     totalInterest += interest;
-    payments.set(month.month, interest);
+    if (paymentMode === 'full') {
+      accruedInterest += interest;
+      payments.set(month.month, 0);
+    } else {
+      payments.set(month.month, interest);
+    }
   }
 
+  const balloonInterestPayoff = paymentMode === 'full'
+    ? Math.min(accruedInterest, envelope.fundingPlan.endingCash)
+    : 0;
+  const unpaidBalloonInterest = Math.max(0, accruedInterest - balloonInterestPayoff);
+
   return {
+    productId,
+    label: product?.label ?? (input.bridgeIndexed ? 'גישור צמוד' : 'גישור לא־צמוד'),
+    indexed: Boolean(product?.indexed),
+    variable: Boolean(product?.variable),
+    paymentMode,
     rate,
     requestedYears,
     termSupported,
@@ -435,11 +453,38 @@ function simulateBridge(dataset, input, envelope, ratePosition) {
     totalInterest,
     totalIndexation,
     totalCost: totalInterest + totalIndexation,
-    endingBalance: existingBalance + newBalance
+    accruedInterest,
+    balloonInterestPayoff,
+    unpaidBalloonInterest,
+    endingBalance: existingBalance + newBalance + unpaidBalloonInterest
   };
 }
 
-function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStrategy }) {
+export function calculateNewPropertyFinancing(tracks, envelope, bridge) {
+  const longTermAmount = Math.max(0, number(envelope.longTermNeed));
+  const newBridgeAmount = Math.max(0, number(envelope.fundingPlan?.peakNewBridge));
+  const variableLongTermAmount = (Array.isArray(tracks) ? tracks : [])
+    .filter((track) => track.variable)
+    .reduce((sum, track) => sum + longTermAmount * Math.max(0, number(track.share)), 0);
+  const variableBridgeAmount = bridge?.variable ? newBridgeAmount : 0;
+  const total = longTermAmount + newBridgeAmount;
+  const variableAmount = variableLongTermAmount + variableBridgeAmount;
+  const fixedAmount = Math.max(0, total - variableAmount);
+  const variableShare = total > 0 ? variableAmount / total : 0;
+
+  return {
+    total,
+    longTermAmount,
+    newBridgeAmount,
+    fixedAmount,
+    variableAmount,
+    fixedShare: total > 0 ? fixedAmount / total : 0,
+    variableShare,
+    compliant: variableShare <= 2 / 3 + 0.0001
+  };
+}
+
+function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStrategy, bridgeMode }) {
   const termYears = clamp(input.termYears || 30, 4, 30);
   const ratePosition = clamp(input.ratePosition ?? 0.4, 0, 1);
   const tracks = trackRatesForMix(
@@ -480,7 +525,7 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
     }
   }
 
-  const bridge = simulateBridge(dataset, input, envelope, ratePosition);
+  const bridge = simulateBridge(dataset, input, envelope, ratePosition, bridgeMode);
   const transitionEnd = envelope.fundingPlan.transitionEndMonth;
   const existingPayment = Math.max(0, number(input.existingMortgagePayment));
   const otherMonthlyLoans = Math.max(0, number(input.otherMonthlyLoans));
@@ -509,22 +554,26 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
   const estimatedEarlyRepaymentFee = Math.max(0, number(input.estimatedEarlyRepaymentFee));
   const totalCost = totalInterest + totalIndexation + bridge.totalCost + financingFees + estimatedEarlyRepaymentFee;
 
-  const regulatoryVariableShare = tracks
-    .filter((track) => track.variable)
-    .reduce((sum, track) => sum + track.share, 0);
+  const newPropertyFinancing = calculateNewPropertyFinancing(tracks, envelope, bridge);
+  const regulatoryVariableShare = newPropertyFinancing.variableShare;
   const indexedShare = tracks
     .filter((track) => track.indexed)
     .reduce((sum, track) => sum + track.share, 0);
 
   const violations = [];
-  if (regulatoryVariableShare > 2 / 3 + 0.0001) violations.push('רכיב הריבית המשתנה גבוה משני שלישים');
+  if (!newPropertyFinancing.compliant) {
+    violations.push('הריבית המשתנה בכלל המימון על הבית החדש גבוהה משני שלישים');
+  }
   if (envelope.longTermNeed > envelope.newMortgageCapacity + 1) violations.push('המשכנתה הארוכה חורגת מתקרת 70%');
   if (envelope.fundingPlan.uncovered > 1) violations.push('קיים פער מימון שאינו מכוסה');
   if (envelope.fundingPlan.remainingBridge > 1) violations.push('הגישור אינו נסגר לאחר תקבולי המכירה');
-  if (bridge.endingBalance > 1) violations.push('הצמדה הותירה יתרת גישור לאחר המכירה');
+  if (bridge.endingBalance > 1) violations.push('נותרה יתרת גישור או ריבית בלון ללא מקור סילוק');
   if (!bridge.termSupported) violations.push('תקופת הגישור ארוכה מטווח הריבית הזמין');
   if (peakTransitionPayment > effectiveTransitionCap + 1) violations.push('החזר המעבר חורג מהתקרה');
   if (stablePayment > effectiveStableCap + 1) violations.push('ההחזר הקבוע חורג מהתקרה');
+
+  const transitionOverage = Math.max(0, peakTransitionPayment - effectiveTransitionCap);
+  const stableOverage = Math.max(0, stablePayment - effectiveStableCap);
 
   return {
     profileId,
@@ -533,6 +582,25 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
     tracks,
     graceStrategy,
     bridge,
+    bridgeComponents: {
+      existing: {
+        amount: envelope.fundingPlan.peakExistingBridge,
+        label: bridge.label,
+        rate: bridge.rate.working,
+        paymentMode: bridge.paymentMode,
+        indexed: bridge.indexed,
+        variable: bridge.variable
+      },
+      newProperty: {
+        amount: envelope.fundingPlan.peakNewBridge,
+        label: bridge.label,
+        rate: bridge.rate.working,
+        paymentMode: bridge.paymentMode,
+        indexed: bridge.indexed,
+        variable: bridge.variable
+      }
+    },
+    newPropertyFinancing,
     totalCost,
     totalInterest: totalInterest + bridge.totalInterest,
     totalIndexation: totalIndexation + bridge.totalIndexation,
@@ -540,6 +608,8 @@ function simulateCandidate({ input, envelope, dataset, profileId, mix, graceStra
     stablePayment,
     effectiveTransitionCap,
     effectiveStableCap,
+    transitionOverage,
+    stableOverage,
     variableShare: regulatoryVariableShare,
     indexedShare,
     feasible: violations.length === 0,
@@ -562,14 +632,23 @@ function optimizeProfile(input, envelope, dataset, profileId) {
       clamp(input.ratePosition ?? 0.4, 0, 1),
       input.primeScenarioDelta
     );
-    for (const graceStrategy of graceVariants(tracks)) {
-      candidates.push(simulateCandidate({ input, envelope, dataset, profileId, mix, graceStrategy }));
+    const bridgeModes = input.avoidFullBalloon === true ? ['partial'] : ['partial', 'full'];
+    for (const graceStrategy of graceVariants(tracks, input.avoidFullGrace === true)) {
+      for (const bridgeMode of bridgeModes) {
+        candidates.push(simulateCandidate({
+          input, envelope, dataset, profileId, mix, graceStrategy, bridgeMode
+        }));
+      }
     }
   }
 
   const feasible = candidates.filter((candidate) => candidate.feasible).sort((a, b) => a.totalCost - b.totalCost);
   if (feasible.length) return feasible[0];
-  return candidates.sort((a, b) => a.violations.length - b.violations.length || a.totalCost - b.totalCost)[0] ?? null;
+  return candidates.sort((a, b) =>
+    a.violations.length - b.violations.length ||
+    (a.transitionOverage + a.stableOverage) - (b.transitionOverage + b.stableOverage) ||
+    a.totalCost - b.totalCost
+  )[0] ?? null;
 }
 
 export function optimizeMortgage(input, dataset) {

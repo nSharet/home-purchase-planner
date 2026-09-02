@@ -24,6 +24,20 @@ test('mortgage optimizer keeps the core product flow visible', () => {
   }
 });
 
+test('alternatives expose separate financing components and deferral preferences', () => {
+  for (const required of [
+    'להימנע מגרייס מלא',
+    'להימנע מבלון מלא בגישור',
+    'משכנתה ארוכת טווח על החדש',
+    'גישור על הנכס הקיים',
+    'גישור על הנכס החדש',
+    'בדיקת מימון על הבית החדש',
+    'האופטימום הזמין · חורג'
+  ]) {
+    assert.ok(html.includes(required) || app.includes(required), `missing: ${required}`);
+  }
+});
+
 test('mortgage optimizer supports automatic and user-defined acquisition costs', () => {
   assert.match(html, /id="purchaseTaxMode"/);
   assert.match(html, /id="otherCosts"/);
